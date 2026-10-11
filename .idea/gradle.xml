@@ -10,11 +10,8 @@
         <option name="modules">
           <set>
             <option value="$PROJECT_DIR$" />
-            <option value="$PROJECT_DIR$/Submodules" />
-            <option value="$PROJECT_DIR$/Submodules/RangeSliderPreference" />
-            <option value="$PROJECT_DIR$/annotationProcessor" />
-            <option value="$PROJECT_DIR$/annotations" />
             <option value="$PROJECT_DIR$/app" />
+            <option value="$PROJECT_DIR$/modPackProcessor" />
           </set>
         </option>
       </GradleProjectSettings>
