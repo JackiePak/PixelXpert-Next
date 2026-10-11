@@ -1,4 +1,5 @@
-PKGNAME="sh.siava.pixelxpert"
+PKGNAME="sh.anirudhgupta109.pxn"
+LEGACY_PKGNAME="sh.siava.pixelxpert"
 LSPDDBPATH="/data/adb/lspd/config/modules_config.db" 
 MAGISKDBPATH="/data/adb/magisk.db" 
 MODDIR=${0%/*} 
@@ -53,26 +54,14 @@ until [ "$(getprop sys.boot_completed)" = "1" ]; do
 	sleep 1
 done
 
-if [ -f "$MODDIR/install_needed" ]; then
-	APP_EXISTS=$(pm list packages | grep "sh.siava.pixelxpert")
+if pm list packages | grep -q "package:$LEGACY_PKGNAME"; then
+	echo "- Removing legacy $LEGACY_PKGNAME..."
+	pm uninstall --user 0 "$LEGACY_PKGNAME" > /dev/null 2>&1
+fi
 
+if [ -f "$MODDIR/install_needed" ]; then
 	pm install -r -d "$MODDIR/PixelXpert-Next.apk" > /dev/null 2>&1
 	rm -f "$MODDIR/install_needed"
-
-	# Only restore backup if the app was actually wiped by Android (migration from system app)
-	if [ -z "$APP_EXISTS" ] && [ -d "$MODDIR/px_backup_de/shared_prefs" ]; then
-		mkdir -p "/data/user_de/0/$PKGNAME"
-		cp -af "$MODDIR/px_backup_de/shared_prefs" "/data/user_de/0/$PKGNAME/"
-
-		APP_UID=$(pm list packages -U $PKGNAME | grep ":$PKGNAME " | awk -F 'uid:' '{ print $2 }' | cut -d ',' -f 1)
-		if [ -n "$APP_UID" ]; then
-			chown -R $APP_UID:$APP_UID "/data/user_de/0/$PKGNAME"
-			restorecon -R "/data/user_de/0/$PKGNAME"
-		fi
-	fi
-	
-	# Cleanup backup regardless
-	rm -rf "$MODDIR/px_backup_de"
 fi
 
 # Give the system a brief moment to settle

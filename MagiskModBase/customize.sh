@@ -1,4 +1,5 @@
-PKGNAME="sh.siava.pixelxpert"
+PKGNAME="sh.anirudhgupta109.pxn"
+LEGACY_PKGNAME="sh.siava.pixelxpert"
 LSPDDBPATH="/data/adb/lspd/config/modules_config.db"
 MAGISKDBPATH="/data/adb/magisk.db"
 
@@ -43,10 +44,6 @@ grantRootPkg(){
 #grant root access to required apps
 grantRootApps(){
 	grantRootPkg $PKGNAME
-}
-
-migratePrefs(){
-  am start -n "$PKGNAME/.ui.activities.SettingsActivity" -e migratePrefs true > /dev/null
 }
 
 testKernelSU()
@@ -101,7 +98,7 @@ assertPixelRom
 
 assert16QPR
 
-testKernelSU
+#testKernelSU
 
 
 
@@ -123,6 +120,13 @@ set_perm $MODPATH/service.sh 0 0 0755
 ui_print ''
 ui_print ''
 
+# The legacy build can sit on the system partition, where a plain uninstall is
+# refused; --user 0 covers that as well as a regular user install.
+if pm list packages | grep -q "package:$LEGACY_PKGNAME"; then
+	ui_print "- Removing legacy $LEGACY_PKGNAME..."
+	pm uninstall --user 0 "$LEGACY_PKGNAME" > /dev/null 2>&1
+fi
+
 ui_print '- Installing PixelXpert-Next app...'
 APK_PATH="$MODPATH/PixelXpert-Next.apk"
 if [ -f "$APK_PATH" ]; then
@@ -137,26 +141,14 @@ else
 	ui_print "- APK not found in zip!"
 fi
 
-# Backup data for migration from system app to user app
+# A system build of this package is wiped by Android on the next boot, once the
+# system folder it lived in stops being mounted. The APK has to go back on at
+# that point, so the boot service keeps the retry flag for it.
 if pm list packages -s | grep -q "package:$PKGNAME"; then
-	if [ -d "/data/user_de/0/$PKGNAME/shared_prefs" ]; then
-		ui_print "- System app detected. Backing up preferences for migration..."
-		mkdir -p "$MODPATH/px_backup_de"
-		cp -af "/data/user_de/0/$PKGNAME/shared_prefs" "$MODPATH/px_backup_de/"
-	fi
-	# Android will wipe the app on boot because the system base disappears, so we must reinstall it on boot.
 	touch "$MODPATH/install_needed"
 fi
 
-# Make sure system folder doesn't exist so it doesn't mount as priv-app
-rm -rf "$MODPATH/system"
-
 if [ -f "$LSPDDBPATH" ]; then
-	ui_print ''
-	ui_print ''
-
-	migratePrefs
-
 	ui_print ''
 	ui_print ''
 	ui_print 'Installation Complete!'
