@@ -1,3 +1,7 @@
+**canary-526**  
+- Install new app and drop legacy  
+- Bringup JetpackCompose PX-N app  
+  
 **canary-525**  
 - Keep QS brightness slider full width below tiles and media in landscape  
   
