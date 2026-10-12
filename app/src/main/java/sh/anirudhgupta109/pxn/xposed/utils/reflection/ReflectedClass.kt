@@ -359,6 +359,9 @@ class ReflectedClass(val clazz: Class<*>?) {
 		}
 
 		@JvmStatic
+		fun getFrameworkClassloader(): ClassLoader? = frameworkClassloader
+
+		@JvmStatic
 		fun setDefaultClassloader(classLoader: ClassLoader?) {
 			defaultClassloader = classLoader
 		}

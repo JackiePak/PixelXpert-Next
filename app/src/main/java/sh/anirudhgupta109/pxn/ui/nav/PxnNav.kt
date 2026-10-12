@@ -28,6 +28,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -46,6 +48,7 @@ import org.koin.compose.koinInject
 import sh.anirudhgupta109.pxn.BuildConfig
 import sh.anirudhgupta109.pxn.R
 import sh.anirudhgupta109.pxn.data.PrefStore
+import sh.anirudhgupta109.pxn.ui.debug.HookAuditScreen
 import sh.anirudhgupta109.pxn.ui.prefs.PrefScreenContent
 import sh.anirudhgupta109.pxn.ui.prefs.PullDownIndicator
 import sh.anirudhgupta109.pxn.ui.screens.header_preferences
@@ -102,6 +105,9 @@ sealed interface Route : NavKey {
 
 	@Serializable
 	data object Settings : Route // ownPrefsFragment
+
+	@Serializable
+	data object HookAudit : Route
 }
 
 /**
@@ -352,6 +358,9 @@ fun PxnNav(startRoute: Route? = null) {
 		store.getInt("latestVersionCode", -1) > BuildConfig.VERSION_CODE
 	}
 
+	var settingsTapCount by remember { mutableIntStateOf(0) }
+	var lastSettingsTapTime by remember { mutableLongStateOf(0L) }
+
 	val heading = when (val current = backStack.lastOrNull()) {
 		is Route.Pref -> current.title
 		is Route.Unported -> current.title
@@ -360,6 +369,7 @@ fun PxnNav(startRoute: Route? = null) {
 		is Route.Update -> R.string.navigation_update
 		is Route.Hooks -> R.string.navigation_hooks
 		is Route.Settings -> R.string.navigation_settings
+		is Route.HookAudit -> R.string.hook_audit_title
 		else -> 0
 	}
 
@@ -412,7 +422,24 @@ fun PxnNav(startRoute: Route? = null) {
 					NavigationBarItem(
 						selected = isSelected,
 						onClick = {
-							if (isSelected) reselectTab(spec) else selectTab(spec)
+							if (spec.key == Route.Settings) {
+								val now = System.currentTimeMillis()
+								if (now - lastSettingsTapTime > 3000L) {
+									settingsTapCount = 1
+								} else {
+									settingsTapCount++
+								}
+								lastSettingsTapTime = now
+								if (settingsTapCount >= 5) {
+									settingsTapCount = 0
+									pushTarget(Route.HookAudit)
+								} else {
+									if (isSelected) reselectTab(spec) else selectTab(spec)
+								}
+							} else {
+								settingsTapCount = 0
+								if (isSelected) reselectTab(spec) else selectTab(spec)
+							}
 						},
 						icon = {
 							val tabIcon = Icon(
@@ -483,6 +510,7 @@ fun PxnNav(startRoute: Route? = null) {
 						onSearch = { pushTarget(Route.Search) },
 					)
 				}
+				entry<Route.HookAudit> { HookAuditScreen() }
 			},
 		)
 	}

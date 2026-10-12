@@ -70,3 +70,10 @@
 # Attributes
 # ---------------------------------------------------------------------------
 -keepattributes Exceptions,InnerClasses,Signature,Deprecated,*Annotation*,EnclosingMethod,SourceFile,LineNumberTable
+
+# ---------------------------------------------------------------------------
+# Debug hook audit data models for Gson serialization/deserialization
+# ---------------------------------------------------------------------------
+-keep class sh.anirudhgupta109.pxn.ui.debug.model.** { *; }
+-keepclassmembers class sh.anirudhgupta109.pxn.ui.debug.model.** { *; }
+-keep class androidx.core.content.FileProvider { *; }

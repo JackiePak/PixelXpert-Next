@@ -21,6 +21,20 @@ object Constants {
 	const val ACTION_XPOSED_CONFIRMED: String =
 		"$APPLICATION_ID.ACTION_XPOSED_CONFIRMED"
 
+	/**
+	 * Hook Audit broadcast contracts:
+	 * Sent to request a single-pass inspection from all active hooked processes.
+	 */
+	const val ACTION_REQUEST_HOOK_AUDIT: String =
+		"$APPLICATION_ID.ACTION_REQUEST_HOOK_AUDIT"
+
+	/**
+	 * Answer to hook audit request, carrying the target package in "packageName"
+	 * and serialized audit report JSON in "auditJson".
+	 */
+	const val ACTION_HOOK_AUDIT_RESULT: String =
+		"$APPLICATION_ID.ACTION_HOOK_AUDIT_RESULT"
+
 	const val SYSTEM_UI_PACKAGE: String = "com.android.systemui"
 	const val SYSTEM_FRAMEWORK_PACKAGE: String = "android"
 	const val KSU_PACKAGE: String = "me.weishu.kernelsu"

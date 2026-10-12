@@ -619,4 +619,13 @@
     <string name="qs_brightness_slider_bottom_desc">Move the brightness slider below the quick settings tiles</string>
     <string name="qqs_brightness_slider_title">Always Show Brightness Slider</string>
     <string name="qqs_brightness_slider_desc">Show the brightness slider in collapsed quick settings and share it with expanded quick settings</string>
+
+    <!--Hook Audit Screen-->
+    <string name="hook_audit_title">Hook Audit &amp; Diagnostics</string>
+    <string name="hook_audit_export">Export Report</string>
+    <string name="hook_audit_copy">Copy Markdown</string>
+    <string name="hook_audit_refresh">Refresh Audit</string>
+    <string name="hook_audit_copied">Report copied to clipboard</string>
+    <string name="hook_audit_waiting">Waiting for hooked processes to reply…</string>
+    <string name="hook_audit_waiting_desc">Ensure the module is enabled in LSPosed, target apps are selected in scope, and they have been restarted. Tap Refresh to request audit. A SystemUI restart might be needed!</string>
 </resources>
