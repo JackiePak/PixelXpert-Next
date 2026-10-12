@@ -10,6 +10,8 @@ import android.content.IntentFilter
 import android.graphics.Color
 import android.graphics.drawable.Icon
 import android.net.Uri
+import android.os.Handler
+import android.os.Looper
 import android.os.UserHandle
 import android.provider.AlarmClock
 import android.provider.CalendarContract
@@ -240,14 +242,18 @@ class StatusbarMods @SuppressLint("DiscouragedApi") constructor(context: Context
 	private val voDataExec: Executor = Executor { it.run() }
 
 	private var mStatusBarIconController: Any? = null
+	private var mCommandQueue: Any? = null
+	private var isLegacyStatusBar = false
 
 	private var StatusBarIconClass: ReflectedClass? = null
 	private var StatusBarIconHolderClass: ReflectedClass? = null
+	private var volteStatusbarIcon: Any? = null
 	private var volteStatusbarIconHolder: Any? = null
 	private var telephonyCallbackRegistered = false
 	private var lastVolteAvailable = false
 	private val voDataCallback = serverStateCallback()
 
+	private var vowifiStatusbarIcon: Any? = null
 	private var vowifiStatusbarIconHolder: Any? = null
 	private var lastVowifiAvailable = false
 	//endregion
@@ -258,17 +264,18 @@ class StatusbarMods @SuppressLint("DiscouragedApi") constructor(context: Context
 	//endregion
 
 	//region app profile switch
+	private var mAppSwitchStatusbarIcon: Any? = null
 	private var mAppSwitchStatusbarIconHolder: Any? = null
 
 	private val mAppProfileSwitchReceiver = object : BroadcastReceiver() {
 		override fun onReceive(context: Context?, intent: Intent) {
 			if (Constants.ACTION_PROFILE_SWITCH_AVAILABLE == intent.action) {
 				val isAvailable = intent.getBooleanExtra("available", false)
-				if (isAvailable &&
-					StatusbarAppSwitchIconEnabled &&
-					mStatusBarIconController != null
-				) {
-					callMethod(mStatusBarIconController, "setIcon", APP_SWITCH_SLOT, mAppSwitchStatusbarIconHolder)
+				if (isAvailable && StatusbarAppSwitchIconEnabled) {
+					if (mAppSwitchStatusbarIcon == null) {
+						initSwitchIcon()
+					}
+					setSBIcon(APP_SWITCH_SLOT, mAppSwitchStatusbarIconHolder, mAppSwitchStatusbarIcon)
 				} else {
 					removeSBIconSlot(APP_SWITCH_SLOT)
 				}
@@ -281,9 +288,9 @@ class StatusbarMods @SuppressLint("DiscouragedApi") constructor(context: Context
 		try {
 			val appSwitchIcon = Icon.createWithResource(BuildConfig.APPLICATION_ID, R.drawable.ic_app_switch)
 
-			val appSwitchStatusbarIcon = getStatusbarIconFor(appSwitchIcon, APP_SWITCH_SLOT)
+			mAppSwitchStatusbarIcon = getStatusbarIconFor(appSwitchIcon, APP_SWITCH_SLOT)
 
-			mAppSwitchStatusbarIconHolder = getStatusbarIconHolderFor(appSwitchStatusbarIcon)
+			mAppSwitchStatusbarIconHolder = getStatusbarIconHolderFor(mAppSwitchStatusbarIcon)
 		} catch (ignored: Throwable) {
 		}
 	}
@@ -540,6 +547,10 @@ class StatusbarMods @SuppressLint("DiscouragedApi") constructor(context: Context
 
 	@SuppressLint("DiscouragedApi")
 	override fun onPackageLoaded(PRParam: XposedModuleInterface.PackageReadyParam) {
+		StatusBarIconClass = ReflectedClass.of("com.android.internal.statusbar.StatusBarIcon")
+		StatusBarIconHolderClass = ReflectedClass.ofIfPossible("com.android.systemui.statusbar.phone.StatusBarIconHolder")
+		isLegacyStatusBar = ReflectedClass.ofIfPossible("com.android.systemui.statusbar.pipeline.shared.ui.binder.HomeStatusBarIconBlockListBinder").clazz != null
+
 		onPreferenceUpdated()
 		val filter = IntentFilter()
 		filter.addAction(Constants.ACTION_PROFILE_SWITCH_AVAILABLE)
@@ -564,12 +575,13 @@ class StatusbarMods @SuppressLint("DiscouragedApi") constructor(context: Context
 		val ConnectivityCallbackHandlerClass = ReflectedClass.of("com.android.systemui.statusbar.connectivity.CallbackHandler")
 		val NotificationIconContainerAlwaysOnDisplayViewModelClass = ReflectedClass.ofIfPossible("com.android.systemui.statusbar.notification.icon.ui.viewmodel.NotificationIconContainerAlwaysOnDisplayViewModel")
 		val NotificationIconContainerStatusBarViewModelClass = ReflectedClass.ofIfPossible("com.android.systemui.statusbar.notification.icon.ui.viewmodel.NotificationIconContainerStatusBarViewModel")
-		StatusBarIconClass = ReflectedClass.of("com.android.internal.statusbar.StatusBarIcon")
-		StatusBarIconHolderClass = ReflectedClass.of("com.android.systemui.statusbar.phone.StatusBarIconHolder")
 		val PrivacyItemClass = ReflectedClass.of("com.android.systemui.privacy.PrivacyItem")
 		val PhoneStatusBarViewControllerClass = ReflectedClass.of("com.android.systemui.statusbar.phone.PhoneStatusBarViewController")
 		val KeyguardStateControllerImplClass = ReflectedClass.of("com.android.systemui.statusbar.policy.KeyguardStateControllerImpl")
-		val StatusBarIconControllerImplClass = ReflectedClass.of("com.android.systemui.statusbar.phone.ui.StatusBarIconControllerImpl")
+		val StatusBarIconControllerImplClass = ReflectedClass.ofIfPossible("com.android.systemui.statusbar.phone.ui.StatusBarIconControllerImpl").let {
+			if (it.clazz != null) it else ReflectedClass.ofIfPossible("com.android.systemui.statusbar.phone.StatusBarIconControllerImpl")
+		}
+		val CommandQueueClass = ReflectedClass.ofIfPossible("com.android.systemui.statusbar.CommandQueue")
 		val ShadeHeaderControllerClass = ReflectedClass.of("com.android.systemui.shade.ShadeHeaderController")
 		val ActivityStarterImplClass = ReflectedClass.of("com.android.systemui.statusbar.phone.ActivityStarterImpl")
 		//endregion
@@ -587,9 +599,31 @@ class StatusbarMods @SuppressLint("DiscouragedApi") constructor(context: Context
 				}
 			}
 
+		CommandQueueClass
+			.afterConstruction()
+			.run { param ->
+				mCommandQueue = param.thisObject
+				if (VolteIconEnabled || VowifiIconEnabled) {
+					initVoData()
+				}
+			}
+
 		StatusBarIconControllerImplClass
 			.afterConstruction()
-			.run { param -> mStatusBarIconController = param.thisObject }
+			.run { param ->
+				mStatusBarIconController = param.thisObject
+				if (mCommandQueue == null) {
+					for (arg in param.args) {
+						if (arg != null && arg.javaClass.name.endsWith("CommandQueue")) {
+							mCommandQueue = arg
+							break
+						}
+					}
+				}
+				if (VolteIconEnabled || VowifiIconEnabled) {
+					initVoData()
+				}
+			}
 
 		if (NotificationIconContainerAlwaysOnDisplayViewModelClass.clazz != null) //Viewbinder implementation of the notification icon container
 		{
@@ -1096,6 +1130,7 @@ class StatusbarMods @SuppressLint("DiscouragedApi") constructor(context: Context
 	}
 
 	private fun getStatusbarIconHolderFor(statusbarIcon: Any?): Any? {
+		if (statusbarIcon == null || StatusBarIconHolderClass?.clazz == null) return null
 		val holder = ObjenesisHelper.newInstance(StatusBarIconHolderClass!!.clazz)
 		val iconFiled = arrayOfNulls<String>(1)
 		StatusBarIconHolderClass!!.clazz!!.fields.forEach { field ->
@@ -1117,15 +1152,28 @@ class StatusbarMods @SuppressLint("DiscouragedApi") constructor(context: Context
 
 				val volteIcon = Icon.createWithResource(BuildConfig.APPLICATION_ID, R.drawable.ic_volte)
 				val volteStatusbarIcon = getStatusbarIconFor(volteIcon, VO_LTE_SLOT)
+				this.volteStatusbarIcon = volteStatusbarIcon
 				volteStatusbarIconHolder = getStatusbarIconHolderFor(volteStatusbarIcon)
 
 				val vowifiIcon = Icon.createWithResource(BuildConfig.APPLICATION_ID, R.drawable.ic_vowifi)
 				val vowifiStatusbarIcon = getStatusbarIconFor(vowifiIcon, VO_WIFI_SLOT)
+				this.vowifiStatusbarIcon = vowifiStatusbarIcon
 				vowifiStatusbarIconHolder = getStatusbarIconHolderFor(vowifiStatusbarIcon)
 
 				//noinspection DataFlowIssue
 				SystemUtils.TelephonyManager()!!.registerTelephonyCallback(voDataExec, voDataCallback)
 				telephonyCallbackRegistered = true
+			} else {
+				if (volteStatusbarIcon == null) {
+					val volteIcon = Icon.createWithResource(BuildConfig.APPLICATION_ID, R.drawable.ic_volte)
+					volteStatusbarIcon = getStatusbarIconFor(volteIcon, VO_LTE_SLOT)
+					volteStatusbarIconHolder = getStatusbarIconHolderFor(volteStatusbarIcon)
+				}
+				if (vowifiStatusbarIcon == null) {
+					val vowifiIcon = Icon.createWithResource(BuildConfig.APPLICATION_ID, R.drawable.ic_vowifi)
+					vowifiStatusbarIcon = getStatusbarIconFor(vowifiIcon, VO_WIFI_SLOT)
+					vowifiStatusbarIconHolder = getStatusbarIconHolderFor(vowifiStatusbarIcon)
+				}
 			}
 		} catch (ignored: Exception) {
 		}
@@ -1157,12 +1205,7 @@ class StatusbarMods @SuppressLint("DiscouragedApi") constructor(context: Context
 		if (lastVolteAvailable != volteStateAvailable || force) {
 			lastVolteAvailable = volteStateAvailable
 			if (volteStateAvailable && VolteIconEnabled) {
-				mPhoneStatusbarView!!.post {
-					try {
-						callMethod(mStatusBarIconController, "setIcon", VO_LTE_SLOT, volteStatusbarIconHolder)
-					} catch (ignored: Exception) {
-					}
-				}
+				setSBIcon(VO_LTE_SLOT, volteStatusbarIconHolder, volteStatusbarIcon)
 			} else {
 				removeSBIconSlot(VO_LTE_SLOT)
 			}
@@ -1171,25 +1214,69 @@ class StatusbarMods @SuppressLint("DiscouragedApi") constructor(context: Context
 		if (lastVowifiAvailable != voWifiAvailable || force) {
 			lastVowifiAvailable = voWifiAvailable
 			if (voWifiAvailable && VowifiIconEnabled) {
-				mPhoneStatusbarView!!.post {
-					try {
-						callMethod(mStatusBarIconController, "setIcon", VO_WIFI_SLOT, vowifiStatusbarIconHolder)
-					} catch (ignored: Exception) {
-					}
-				}
+				setSBIcon(VO_WIFI_SLOT, vowifiStatusbarIconHolder, vowifiStatusbarIcon)
 			} else {
 				removeSBIconSlot(VO_WIFI_SLOT)
 			}
 		}
 	}
 
-	private fun removeSBIconSlot(slot: String) {
-		if (mPhoneStatusbarView == null) return //probably it's too soon to have a statusbar
+	private val mainHandler = Handler(Looper.getMainLooper())
 
-		mPhoneStatusbarView!!.post {
-			try {
-				callMethod(mStatusBarIconController, "removeAllIconsForSlot", slot, false)
-			} catch (ignored: Throwable) {
+	private fun runOnMainThread(action: () -> Unit) {
+		if (Looper.myLooper() == Looper.getMainLooper()) {
+			action()
+		} else {
+			mainHandler.post(action)
+		}
+	}
+
+	private fun setSBIcon(slot: String, holder: Any?, icon: Any?) {
+		runOnMainThread {
+			if (!isLegacyStatusBar && mCommandQueue != null && icon != null) {
+				try {
+					callMethod(mCommandQueue, "setIcon", slot, icon)
+					return@runOnMainThread
+				} catch (ignored: Throwable) {
+				}
+			}
+			if (mStatusBarIconController != null && holder != null) {
+				try {
+					callMethod(mStatusBarIconController, "setIcon", slot, holder)
+					return@runOnMainThread
+				} catch (ignored: Throwable) {
+				}
+			}
+			if (mCommandQueue != null && icon != null) {
+				try {
+					callMethod(mCommandQueue, "setIcon", slot, icon)
+				} catch (ignored: Throwable) {
+				}
+			}
+		}
+	}
+
+	private fun removeSBIconSlot(slot: String) {
+		runOnMainThread {
+			if (!isLegacyStatusBar && mCommandQueue != null) {
+				try {
+					callMethod(mCommandQueue, "removeIcon", slot)
+					return@runOnMainThread
+				} catch (ignored: Throwable) {
+				}
+			}
+			if (mStatusBarIconController != null) {
+				try {
+					callMethod(mStatusBarIconController, "removeAllIconsForSlot", slot, false)
+					return@runOnMainThread
+				} catch (ignored: Throwable) {
+				}
+			}
+			if (mCommandQueue != null) {
+				try {
+					callMethod(mCommandQueue, "removeIcon", slot)
+				} catch (ignored: Throwable) {
+				}
 			}
 		}
 	}
