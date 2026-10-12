@@ -137,16 +137,25 @@ class StatusbarGestures(context: Context) : XposedModPack(context) {
 				ReflectedClass.of(mTouchHandler.javaClass)
 					.before("onTouchEvent")
 					.run { param2 ->
-						val motionEvent = param2.args[0] as MotionEvent?
+						val motionEvent = param2.args[0] as MotionEvent? ?: return@run
 
 						if (oneFingerPullupEnabled && !isKeyguard(NotificationPanelViewController)) {
-							if (SystemClock.uptimeMillis() - lastPullupTouchTime[0] > 1000) {
-								motionEvent!!.setAction(MotionEvent.ACTION_DOWN)
-								lastPullupTouchTime[0] = SystemClock.uptimeMillis()
-								mDownEvent = MotionEvent.obtain(motionEvent)
-								return@run
-							} else if (MotionEvent.ACTION_UP == motionEvent!!.getAction()) {
-								lastPullupTouchTime[0] = 0
+							when (motionEvent.actionMasked) {
+								MotionEvent.ACTION_OUTSIDE -> return@run
+
+								// Only a live touch stream can be re-based into the pull-up
+								// gesture; terminal actions just end gesture tracking.
+								MotionEvent.ACTION_DOWN, MotionEvent.ACTION_MOVE ->
+									if (SystemClock.uptimeMillis() - lastPullupTouchTime[0] > 1000) {
+										motionEvent.setAction(MotionEvent.ACTION_DOWN)
+										lastPullupTouchTime[0] = SystemClock.uptimeMillis()
+										mDownEvent?.recycle()
+										mDownEvent = MotionEvent.obtain(motionEvent)
+										return@run
+									}
+
+								MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL ->
+									lastPullupTouchTime[0] = 0
 							}
 							pullUpDetector.onTouchEvent(motionEvent)
 						}
