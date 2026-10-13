@@ -124,20 +124,72 @@ object SystemUIInspector {
 		}
 		statusbarItems.add(iconController)
 
+		val composeClock = InspectionUtils.checkClass(
+			classLoader,
+			"com.android.systemui.clock.ui.composable.ClockKt",
+			"ClockKt (Compose Statusbar Clock)",
+			utilized = false,
+		)
+		val isComposeClockPresent = composeClock.status == AuditStatus.PRESENT
+
 		statusbarItems.add(
 			InspectionUtils.checkClass(
 				classLoader,
 				"com.android.systemui.statusbar.policy.Clock",
 				"Clock (Statusbar Clock Policy)",
+				utilized = !isComposeClockPresent,
+			)
+		)
+
+		statusbarItems.add(
+			if (isComposeClockPresent) {
+				composeClock.copy(utilized = true)
+			} else {
+				composeClock
+			}
+		)
+
+		statusbarItems.add(
+			InspectionUtils.checkMethod(
+				classLoader,
+				"com.android.systemui.clock.domain.interactor.ClockInteractor",
+				"getClockTextFormatString",
+				"ClockInteractor#getClockTextFormatString (Clock Formatter)",
+				utilized = isComposeClockPresent,
+			)
+		)
+
+		val sbNicVmConstructor = InspectionUtils.checkConstructor(
+			classLoader,
+			"com.android.systemui.statusbar.notification.icon.ui.viewmodel.NotificationIconContainerStatusBarViewModel",
+			"NotificationIconContainerStatusBarViewModel.<init>",
+			checkInlined = true,
+			utilized = false,
+		)
+		statusbarItems.add(
+			if (sbNicVmConstructor.status == AuditStatus.PRESENT) {
+				sbNicVmConstructor.copy(utilized = true)
+			} else {
+				sbNicVmConstructor
+			}
+		)
+
+		statusbarItems.add(
+			InspectionUtils.checkConstructor(
+				classLoader,
+				"com.android.systemui.statusbar.notification.icon.ui.viewbinder.NotificationIconContainerViewBinder\$bind\$2",
+				"NotificationIconContainerViewBinder\$bind\$2.<init> (Status Bar Icon Limit)",
+				checkInlined = true,
 				utilized = true,
 			)
 		)
 
 		statusbarItems.add(
-			InspectionUtils.checkClass(
+			InspectionUtils.checkConstructor(
 				classLoader,
 				"com.android.systemui.statusbar.notification.icon.ui.viewmodel.NotificationIconContainerAlwaysOnDisplayViewModel",
-				"NotificationIconContainerAlwaysOnDisplayViewModel",
+				"NotificationIconContainerAlwaysOnDisplayViewModel.<init> (AOD Icon Limit)",
+				checkInlined = true,
 				utilized = true,
 			)
 		)
@@ -151,10 +203,19 @@ object SystemUIInspector {
 			)
 		)
 
-		val statusbarSummary = if (!isLegacyStatusBar) {
-			"SYSTEM UTILIZING: COMPOSE STATUSBAR PIPELINE. Legacy HomeStatusBarIconBlockListBinder is ABSENT and @id/system_icons is hidden. Custom status bar icons must be dispatched via CommandQueue.setIcon()."
+		val clockSubsystem = if (isComposeClockPresent) {
+			"Compose ClockKt pipeline (Android 17+)"
 		} else {
-			"SYSTEM UTILIZING: LEGACY VIEW STATUSBAR PIPELINE. HomeStatusBarIconBlockListBinder is PRESENT; StatusBarIconControllerImpl drives PhoneStatusBarView."
+			"Legacy View Clock pipeline (@id/clock)"
+		}
+
+		val statusbarSummary = buildString {
+			if (!isLegacyStatusBar) {
+				append("SYSTEM UTILIZING: COMPOSE STATUSBAR PIPELINE. Legacy HomeStatusBarIconBlockListBinder is ABSENT and @id/system_icons is hidden. Custom status bar icons must be dispatched via CommandQueue.setIcon().")
+			} else {
+				append("SYSTEM UTILIZING: LEGACY VIEW STATUSBAR PIPELINE. HomeStatusBarIconBlockListBinder is PRESENT; StatusBarIconControllerImpl drives PhoneStatusBarView.")
+			}
+			append(" Clock Subsystem: $clockSubsystem.")
 		}
 
 		// ==========================================
