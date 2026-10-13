@@ -38,6 +38,7 @@ import de.robv.android.xposed.XposedHelpers.getObjectField
 import de.robv.android.xposed.XposedHelpers.setAdditionalInstanceField
 import de.robv.android.xposed.XposedHelpers.setObjectField
 import io.github.libxposed.api.XposedModuleInterface
+import java.lang.ref.WeakReference
 import java.util.Arrays
 import java.util.Locale
 import java.util.Timer
@@ -226,6 +227,7 @@ class StatusbarMods @SuppressLint("DiscouragedApi") constructor(context: Context
 	private var mActivityStarter: Any? = null
 	private var AODNIC: Any? = null
 	private var SBNIC: Any? = null
+	private var mNicView: WeakReference<View>? = null
 	private var mStatusbarStartSide: ViewGroup? = null
 	private var mCenteredIconArea: View? = null
 	private var mSystemIconArea: LinearLayout? = null
@@ -339,6 +341,12 @@ class StatusbarMods @SuppressLint("DiscouragedApi") constructor(context: Context
 		}
 		if (SBNIC != null) {
 			setObjectField(SBNIC, "maxIcons", NotificationIconLimit)
+		}
+		mNicView?.get()?.let { nic ->
+			runCatching { setObjectField(nic, "mMaxIcons", NotificationIconLimit) }
+		}
+		mNotificationIconContainer?.let { nic ->
+			runCatching { setObjectField(nic, "mMaxIcons", NotificationIconLimit) }
 		}
 
 		val paddings = Xprefs.getSliderValues("statusbarPaddings", 0f)
@@ -575,6 +583,7 @@ class StatusbarMods @SuppressLint("DiscouragedApi") constructor(context: Context
 		val ConnectivityCallbackHandlerClass = ReflectedClass.of("com.android.systemui.statusbar.connectivity.CallbackHandler")
 		val NotificationIconContainerAlwaysOnDisplayViewModelClass = ReflectedClass.ofIfPossible("com.android.systemui.statusbar.notification.icon.ui.viewmodel.NotificationIconContainerAlwaysOnDisplayViewModel")
 		val NotificationIconContainerStatusBarViewModelClass = ReflectedClass.ofIfPossible("com.android.systemui.statusbar.notification.icon.ui.viewmodel.NotificationIconContainerStatusBarViewModel")
+		val NicViewBinderBind2Class = ReflectedClass.ofIfPossible("com.android.systemui.statusbar.notification.icon.ui.viewbinder.NotificationIconContainerViewBinder\$bind\$2")
 		val PrivacyItemClass = ReflectedClass.of("com.android.systemui.privacy.PrivacyItem")
 		val PhoneStatusBarViewControllerClass = ReflectedClass.of("com.android.systemui.statusbar.phone.PhoneStatusBarViewController")
 		val KeyguardStateControllerImplClass = ReflectedClass.of("com.android.systemui.statusbar.policy.KeyguardStateControllerImpl")
@@ -641,6 +650,21 @@ class StatusbarMods @SuppressLint("DiscouragedApi") constructor(context: Context
 					setObjectField(SBNIC, "maxIcons", NotificationIconLimit)
 				}
 		}
+
+		NicViewBinderBind2Class
+			.afterConstruction()
+			.run { param ->
+				val vm = param.args.getOrNull(2) ?: runCatching { getObjectField(param.thisObject, "\$viewModel") }.getOrNull()
+				if (vm != null) {
+					SBNIC = vm
+					setObjectField(SBNIC, "maxIcons", NotificationIconLimit)
+				}
+				val view = (param.args.getOrNull(1) as? View) ?: runCatching { getObjectField(param.thisObject, "\$view") as? View }.getOrNull()
+				if (view != null) {
+					mNicView = WeakReference(view)
+					runCatching { setObjectField(view, "mMaxIcons", NotificationIconLimit) }
+				}
+			}
 
 		initSwitchIcon()
 
