@@ -120,8 +120,13 @@ fun HookAuditScreen() {
 
 	fun exportReport() {
 		val markdown = MarkdownGenerator.generate(device, reports.values.toList())
+		val rawBuild = device.buildId.ifBlank { device.buildDisplay }
+		val buildPrefix = rawBuild.substringBefore('.').filter { it.isLetterOrDigit() }
+		val buildTag = (if (buildPrefix.length >= 4) buildPrefix.take(4) else rawBuild.filter { it.isLetterOrDigit() }.take(4))
+			.lowercase(Locale.ROOT)
+			.ifBlank { "unknown" }
 		val timestamp = SimpleDateFormat("yyyy-MM-dd-HHmmss", Locale.US).format(Date())
-		val fileName = "PXN-debug-hook-$timestamp.md"
+		val fileName = "PXN-hooks-$buildTag-$timestamp.md"
 
 		try {
 			val reportsDir = File(context.cacheDir, "reports").apply { mkdirs() }
