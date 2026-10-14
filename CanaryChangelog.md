@@ -1,3 +1,10 @@
+**canary-527**  
+- audit: Modify file name to include android build version  
+- Audit status bar clock subsystem, Compose ClockKt and notification icon binder hooks  
+- Dual-dispatch status bar icons to CommandQueue for Compose status bar  
+- Add Hook Audit & Diagnostics tool with markdown export  
+- Never rewrite ACTION_OUTSIDE in one-finger pull-up hook  
+  
 **canary-526**  
 - Install new app and drop legacy  
 - Bringup JetpackCompose PX-N app  
