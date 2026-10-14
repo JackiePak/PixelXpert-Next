@@ -44,24 +44,34 @@ import org.intellij.markdown.parser.MarkdownParser
  * with its own scroller competes with a scrolling parent for the same drag, and
  * the gesture comes back feeling dragged through mud.
  */
+private data class ParsedMarkdown(
+	val source: String,
+	val root: ASTNode,
+)
+
 @Composable
 fun MarkdownText(
 	markdown: String,
 	modifier: Modifier = Modifier,
 ) {
-	val tree by produceState<ASTNode?>(initialValue = null, markdown) {
+	val parsed by produceState<ParsedMarkdown?>(initialValue = null, markdown) {
 		value = withContext(Dispatchers.Default) {
-			MarkdownParser(GFMFlavourDescriptor()).buildMarkdownTreeFromString(markdown)
+			val ast = MarkdownParser(GFMFlavourDescriptor()).buildMarkdownTreeFromString(markdown)
+			ParsedMarkdown(source = markdown, root = ast)
 		}
 	}
-	val root = tree ?: return
+	val current = parsed
+	if (current == null || current.source != markdown) return
+
 	val theme = MarkdownTheme(
-		source = markdown,
+		source = current.source,
 		body = MaterialTheme.colorScheme.onSurface,
 		link = MaterialTheme.colorScheme.primary,
 		codeBackground = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.08f),
 	)
-	Blocks(root, theme)
+	Column(modifier = modifier) {
+		Blocks(current.root, theme)
+	}
 }
 
 /** Everything a render pass needs: the source to slice and the colours to draw with. */
@@ -72,8 +82,12 @@ private class MarkdownTheme(
 	val codeBackground: Color,
 )
 
-private fun ASTNode.textIn(theme: MarkdownTheme): String =
-	theme.source.substring(startOffset, endOffset)
+private fun ASTNode.textIn(theme: MarkdownTheme): String {
+	val src = theme.source
+	val start = startOffset.coerceIn(0, src.length)
+	val end = endOffset.coerceIn(start, src.length)
+	return src.substring(start, end)
+}
 
 // ------------------------------------------------------------------- blocks
 

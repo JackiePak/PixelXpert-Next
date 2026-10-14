@@ -307,7 +307,7 @@ fun UpdateScreen(store: PrefStore) {
 		modifier = Modifier
 			.fillMaxSize()
 			.then(
-				if (twoColumn) Modifier.padding(top = 24.dp, bottom = 24.dp)
+				if (twoColumn) Modifier.padding(24.dp)
 				else Modifier.padding(24.dp).verticalScroll(rememberScrollState()),
 			),
 	) {
@@ -597,7 +597,13 @@ private fun ChangelogCard(
 					.fillMaxWidth()
 					.then(
 						if (fillHeight) Modifier.weight(1f).verticalScroll(rememberScrollState())
-						else Modifier.padding(bottom = 8.dp),
+						else Modifier,
+					)
+					.padding(
+						start = dimensionResource(R.dimen.ui_container_margin_side),
+						end = dimensionResource(R.dimen.ui_container_margin_side),
+						top = 8.dp,
+						bottom = 12.dp,
 					),
 			)
 		}
