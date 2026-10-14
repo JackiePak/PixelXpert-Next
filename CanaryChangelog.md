@@ -1,3 +1,6 @@
+**canary-528**  
+- update: Fix crash due to shorter changelog when switching branch + fix paddings  
+  
 **canary-527**  
 - audit: Modify file name to include android build version  
 - Audit status bar clock subsystem, Compose ClockKt and notification icon binder hooks  
