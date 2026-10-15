@@ -1,3 +1,6 @@
+**canary-530**  
+- Restore color customization and color pickers  
+  
 **canary-529**  
 - Add toggle to block sensitive QS tiles and power menu  
 - Explicitly target SystemUI for profile switch broadcast  
