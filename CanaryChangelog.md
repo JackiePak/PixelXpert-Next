@@ -1,3 +1,10 @@
+**canary-529**  
+- Add toggle to block sensitive QS tiles and power menu  
+- Explicitly target SystemUI for profile switch broadcast  
+- Fix flashlight fade effect with strength-leveled torch  
+- Remove flashlight-leveled tile and associated code  
+- Fix QQS rows on builds with inlined repository constructor  
+  
 **canary-528**  
 - update: Fix crash due to shorter changelog when switching branch + fix paddings  
   
