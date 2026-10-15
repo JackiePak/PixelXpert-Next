@@ -82,6 +82,7 @@ class QSTileGrid(context: Context) : XposedModPack(context) {
 		val PaginatedGridLayoutClass = ReflectedClass.ofIfPossible("com.android.systemui.qs.panels.ui.compose.PaginatedGridLayout")
 		val QSColumnsRepositoryClass = ReflectedClass.ofIfPossible("com.android.systemui.qs.panels.data.repository.QSColumnsRepository")
 		val QuickQuickSettingsRowRepositoryClass = ReflectedClass.ofIfPossible("com.android.systemui.qs.panels.data.repository.QuickQuickSettingsRowRepository")
+		val QuickQuickSettingsRowInteractorClass = ReflectedClass.ofIfPossible("com.android.systemui.qs.panels.domain.interactor.QuickQuickSettingsRowInteractor")
 		val CommonTileKtClass = ReflectedClass.ofIfPossible("com.android.systemui.qs.panels.ui.compose.infinitegrid.CommonTileKt")
 
 		//noinspection unchecked
@@ -152,20 +153,38 @@ class QSTileGrid(context: Context) : XposedModPack(context) {
 				}
 			}
 
+		val fakeQuickQSRowsResource = object : FakeIntegerResource(mContext) {
+			override fun getInteger(id: Int): Int {
+				try {
+					if (mContext.resources.getResourceName(id).endsWith("quick_qs_paginated_grid_num_rows")) {
+						val isLandscape = mContext.resources.configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
+						if (isLandscape && QQSTileRowsL != NOT_SET)
+							return QQSTileRowsL
+						else if (!isLandscape && QQSTileRows != NOT_SET)
+							return QQSTileRows
+					}
+				} catch (_: Throwable) {
+				}
+				return mContext.resources.getInteger(id)
+			}
+		}
+
+		// Targets builds where the repository constructor is declared
 		QuickQuickSettingsRowRepositoryClass
 			.beforeConstruction()
 			.run { param ->
-				param.args[0] = object : FakeIntegerResource(mContext) {
-					override fun getInteger(id: Int): Int {
-						if (getResourceName(id).endsWith("quick_qs_paginated_grid_num_rows")) {
-							val isLandscape = mContext.resources.configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
-							if (isLandscape && QQSTileRowsL != NOT_SET)
-								return QQSTileRowsL
-							else if (!isLandscape && QQSTileRows != NOT_SET)
-								return QQSTileRows
-						}
-						return mContext.resources.getInteger(id)
-					}
+				if (param.args.isNotEmpty() && param.args[0] is Resources) {
+					param.args[0] = fakeQuickQSRowsResource
+				}
+			}
+
+		// Targets builds where the repository constructor was inlined into Dagger by R8
+		QuickQuickSettingsRowInteractorClass
+			.beforeConstruction()
+			.run { param ->
+				val repo = param.args.getOrNull(0)
+				if (repo != null) {
+					setObjectField(repo, "resources", fakeQuickQSRowsResource)
 				}
 			}
 	}

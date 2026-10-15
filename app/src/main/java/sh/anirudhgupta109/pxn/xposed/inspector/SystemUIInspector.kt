@@ -228,9 +228,14 @@ object SystemUIInspector {
 			checkInlined = true,
 			utilized = false,
 		)
-		qsItems.add(qqsRowRepo)
-
 		val isQqsInlined = qqsRowRepo.status == AuditStatus.INLINED
+		qsItems.add(
+			if (!isQqsInlined && qqsRowRepo.status == AuditStatus.PRESENT) {
+				qqsRowRepo.copy(utilized = true)
+			} else {
+				qqsRowRepo
+			}
+		)
 
 		val qqsRowInteractor = InspectionUtils.checkConstructor(
 			classLoader,
