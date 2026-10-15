@@ -2,6 +2,7 @@ package sh.anirudhgupta109.pxn.xposed.utils
 
 import android.content.Context
 import android.content.SharedPreferences
+import android.graphics.Color
 import com.crossbowffs.remotepreferences.RemotePreferences
 import sh.anirudhgupta109.pxn.data.PrefStore
 import java.util.Collections
@@ -77,6 +78,18 @@ class ExtendedRemotePreferences(
 		mIsPrefsInitiated = super.getBoolean(PrefStore.LEGACY_INIT_MARKER, false)
 		super.registerOnSharedPreferenceChangeListener(l)
 		mListenerRegistered = true
+	}
+
+	override fun getInt(key: String, defValue: Int): Int = try {
+		super.getInt(key, defValue)
+	} catch (e: Exception) {
+		val str = try { getString(key, null) } catch (_: Exception) { null }
+		if (str != null) {
+			str.toIntOrNull()
+				?: runCatching { Color.parseColor(str) }.getOrNull()
+				?: str.removePrefix("0x").removePrefix("0X").toLongOrNull(16)?.toInt()
+				?: defValue
+		} else defValue
 	}
 
 	/** An int-typed slider's stored value. */

@@ -397,9 +397,9 @@ class StatusbarMods @SuppressLint("DiscouragedApi") constructor(context: Context
 		val networkTrafficMode = Integer.parseInt(networkTrafficModeStr)
 
 		val networkTrafficRXTop = Xprefs.getBoolean("networkTrafficRXTop", true)
-		// The colourful toggle and its two colour rows are gone; opacity is
-		// deliberately not - it is a separate row on the same screen and was
-		// asked to stay.
+		val networkTrafficColorful = Xprefs.getBoolean("networkTrafficColorful", false)
+		val networkTrafficDLColor = Xprefs.getInt("networkTrafficDLColor", Color.GREEN)
+		val networkTrafficULColor = Xprefs.getInt("networkTrafficULColor", Color.RED)
 		val networkTrafficOpacity = Xprefs.getSliderInt("networkTrafficOpacity", 100)
 		val networkTrafficInterval = Xprefs.getSliderInt("networkTrafficInterval", 1)
 		val networkTrafficShowIcons = Xprefs.getBoolean("networkTrafficShowIcons", true)
@@ -420,7 +420,18 @@ class StatusbarMods @SuppressLint("DiscouragedApi") constructor(context: Context
 			} catch (ignored: Exception) {
 				networkTrafficThreshold = 10
 			}
-			NetworkTraffic.setConstants(networkTrafficInterval, networkTrafficThreshold, networkTrafficMode, networkTrafficRXTop, networkTrafficOpacity, networkTrafficShowIcons, networkTrafficShowInBits)
+			NetworkTraffic.setConstants(
+				networkTrafficInterval,
+				networkTrafficThreshold,
+				networkTrafficMode,
+				networkTrafficRXTop,
+				networkTrafficColorful,
+				networkTrafficDLColor,
+				networkTrafficULColor,
+				networkTrafficOpacity,
+				networkTrafficShowIcons,
+				networkTrafficShowInBits
+			)
 		}
 		if (networkOnSBEnabled) {
 			networkTrafficSB = NetworkTraffic.getInstance(mContext, true)

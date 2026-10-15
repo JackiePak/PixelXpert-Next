@@ -349,6 +349,15 @@ private fun visibleBy(store: PrefStore, key: String?): Boolean {
 				store.getBoolean("networkOnSBEnabled", false) &&
 					store.string("networkTrafficMode", "0") == "0"
 
+			"networkTrafficColorful" ->
+				store.getBoolean("networkOnSBEnabled", false) &&
+					store.string("networkTrafficMode", "0") != "3"
+
+			"networkTrafficDLColor", "networkTrafficULColor" ->
+				store.getBoolean("networkOnSBEnabled", false) &&
+					store.string("networkTrafficMode", "0") != "3" &&
+					store.getBoolean("networkTrafficColorful", false)
+
 			"ThreeButtonLeft", "ThreeButtonCenter", "ThreeButtonRight" ->
 				store.getBoolean("ThreeButtonLayoutMod", false)
 
@@ -1466,7 +1475,7 @@ private fun ColorItem(node: ColorPref, store: PrefStore) {
 			Column {
 				if (node.summary != 0) Text(stringResource(node.summary))
 				Text(
-					text = current,
+					text = formatColorHex(current),
 					color = MaterialTheme.colorScheme.primary,
 					style = MaterialTheme.typography.bodySmall,
 				)
@@ -1486,24 +1495,49 @@ private fun ColorItem(node: ColorPref, store: PrefStore) {
 	)
 
 	if (open) {
+		var draft by remember { mutableStateOf(formatColorHex(current)) }
 		AlertDialog(
 			onDismissRequest = { open = false },
 			title = { Text(titleText(node)) },
 			text = {
 				Column(
 					modifier = Modifier.verticalScroll(rememberScrollState()),
-					verticalArrangement = Arrangement.spacedBy(6.dp),
+					verticalArrangement = Arrangement.spacedBy(8.dp),
 				) {
+					Row(
+						verticalAlignment = Alignment.CenterVertically,
+						modifier = Modifier
+							.fillMaxWidth()
+							.padding(bottom = 4.dp),
+					) {
+						Box(
+							modifier = Modifier
+								.size(36.dp)
+								.background(parseColor(draft), CircleShape),
+						)
+						Spacer(Modifier.width(12.dp))
+						OutlinedTextField(
+							value = draft,
+							onValueChange = { draft = it },
+							singleLine = true,
+							modifier = Modifier.fillMaxWidth(),
+							label = { Text("Hex Color") },
+						)
+					}
+					Text(
+						text = "Presets",
+						style = MaterialTheme.typography.labelMedium,
+						color = MaterialTheme.colorScheme.onSurfaceVariant,
+					)
 					PRESET_COLORS.forEach { hex ->
 						Row(
 							verticalAlignment = Alignment.CenterVertically,
 							modifier = Modifier
 								.fillMaxWidth()
 								.clickable {
-									store.write(node, hex)
-									open = false
+									draft = hex
 								}
-								.padding(vertical = 2.dp),
+								.padding(vertical = 4.dp),
 						) {
 							Box(
 								modifier = Modifier
@@ -1520,8 +1554,16 @@ private fun ColorItem(node: ColorPref, store: PrefStore) {
 				}
 			},
 			confirmButton = {
-				TextButton(onClick = { open = false }) {
+				TextButton(onClick = {
+					store.write(node, draft)
+					open = false
+				}) {
 					Text(stringResource(android.R.string.ok))
+				}
+			},
+			dismissButton = {
+				TextButton(onClick = { open = false }) {
+					Text(stringResource(android.R.string.cancel))
 				}
 			},
 		)
@@ -1529,21 +1571,40 @@ private fun ColorItem(node: ColorPref, store: PrefStore) {
 }
 
 private val PRESET_COLORS = listOf(
-	"#FF0000", "#FF9800", "#FFEB3B", "#4CAF50",
-	"#00BCD4", "#2196F3", "#3F51B5", "#9C27B0",
-	"#E91E63", "#795548", "#607D8B", "#000000",
+	"#8BC34A", "#FAA19B", "#FF0000", "#FF9800",
+	"#FFEB3B", "#4CAF50", "#00BCD4", "#2196F3",
+	"#3F51B5", "#9C27B0", "#E91E63", "#795548",
+	"#607D8B", "#000000", "#FFFFFF",
 )
 
-/** Pure - must not touch MaterialTheme, as it is called outside composition. */
-private fun parseColor(value: String): Color = try {
-	val v = value.removePrefix("#")
-	when (v.length) {
-		6 -> Color(0xFF000000 or v.toLong(16))
-		8 -> Color(v.toLong(16))
-		else -> Color.Gray
+private fun formatColorHex(value: String): String {
+	val intVal = value.toIntOrNull()
+	if (intVal != null) {
+		return String.format("#%06X", 0xFFFFFF and intVal)
 	}
-} catch (_: Throwable) {
-	Color.Gray
+	val trimmed = value.trim()
+	if (trimmed.startsWith("#")) return trimmed.uppercase()
+	if (trimmed.startsWith("0x", ignoreCase = true)) return "#${trimmed.substring(2).uppercase()}"
+	return if (trimmed.isNotEmpty()) "#${trimmed.uppercase()}" else "#FFFFFF"
+}
+
+/** Pure - must not touch MaterialTheme, as it is called outside composition. */
+private fun parseColor(value: String): Color {
+	return try {
+		val intVal = value.toIntOrNull()
+		if (intVal != null) {
+			Color(intVal)
+		} else {
+			val v = value.trim().removePrefix("#").removePrefix("0x").removePrefix("0X")
+			when (v.length) {
+				6 -> Color(0xFF000000 or v.toLong(16))
+				8 -> Color(v.toLong(16))
+				else -> Color.Gray
+			}
+		}
+	} catch (_: Throwable) {
+		Color.Gray
+	}
 }
 
 // ------------------------------------------------------------------ time

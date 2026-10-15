@@ -78,7 +78,11 @@ class PrefStore(context: Context) {
 	fun getInt(key: String, default: Int = 0): Int = try {
 		prefs.getInt(key, default)
 	} catch (ignored: ClassCastException) {
-		prefs.getString(key, null)?.toIntOrNull() ?: default
+		val str = prefs.getString(key, null)
+		str?.toIntOrNull()
+			?: runCatching { android.graphics.Color.parseColor(str) }.getOrNull()
+			?: str?.removePrefix("0x")?.removePrefix("0X")?.toLongOrNull(16)?.toInt()
+			?: default
 	}
 
 	fun getStringSet(key: String, default: Set<String>? = null): Set<String>? =
@@ -152,6 +156,15 @@ class PrefStore(context: Context) {
 
 			is sh.anirudhgupta109.pxn.ui.prefs.node.TimePref ->
 				if (contains(pref.key)) getInt(pref.key, d?.toIntOrNull() ?: 0).toString() else d
+
+			is sh.anirudhgupta109.pxn.ui.prefs.node.ColorPref ->
+				if (contains(pref.key)) {
+					try {
+						getString(pref.key, d)
+					} catch (e: ClassCastException) {
+						getInt(pref.key, d?.toIntOrNull() ?: 0).toString()
+					}
+				} else d
 
 			else ->
 				if (contains(pref.key)) getString(pref.key, d) else d

@@ -97,17 +97,17 @@ class NetworkTraffic private constructor(
 				var output: SpannableStringBuilder? = null
 				when (indicatorMode) {
 					MODE_SHOW_RXTX -> {
-						val RXOutput = formatOutput(timeDelta, rxData)
+						val RXOutput = formatOutput(timeDelta, rxData, if (colorTraffic) downloadColor else null)
 
-						val TXOutput = formatOutput(timeDelta, txData)
+						val TXOutput = formatOutput(timeDelta, txData, if (colorTraffic) uploadColor else null)
 						output = if (RXonTop)
 							RXOutput.append("\n").append(TXOutput)
 						else
 							TXOutput.append("\n").append(RXOutput)
 					}
-					MODE_SHOW_TOTAL -> output = formatOutput(timeDelta, rxData + txData)
-					MODE_SHOW_RX -> output = formatOutput(timeDelta, rxData)
-					MODE_SHOW_TX -> output = formatOutput(timeDelta, txData)
+					MODE_SHOW_TOTAL -> output = formatOutput(timeDelta, rxData + txData, null)
+					MODE_SHOW_RX -> output = formatOutput(timeDelta, rxData, if (colorTraffic) downloadColor else null)
+					MODE_SHOW_TX -> output = formatOutput(timeDelta, txData, if (colorTraffic) uploadColor else null)
 				}
 				mTextView.text = output
 				makeVisible(true)
@@ -119,15 +119,10 @@ class NetworkTraffic private constructor(
 			mTrafficHandler.postDelayed(mRunnable, refreshInterval * 1000L)
 		}
 
-		// No colour parameter: the row that supplied one - "Make it colorful"
-		// plus its download/upload colour rows - is gone, so the indicator
-		// always takes the system's own text colour. `getHumanizedBytes` keeps
-		// its nullable colour because the network statistics formatter still
-		// passes one.
-		private fun formatOutput(timeDelta: Long, data: Long): SpannableStringBuilder {
+		private fun formatOutput(timeDelta: Long, data: Long, @Nullable @ColorInt textColor: Int?): SpannableStringBuilder {
 			val speed = (data / (timeDelta / 1000F)).toLong()
 
-			return ObjectTools.getHumanizedBytes(speed, showInBits, .7f, if (indicatorMode == MODE_SHOW_RXTX) " " else "\n", symbol, null)
+			return ObjectTools.getHumanizedBytes(speed, showInBits, .7f, if (indicatorMode == MODE_SHOW_RXTX) " " else "\n", symbol, textColor)
 		}
 
 		private fun shouldHide(rxData: Long, txData: Long, timeDelta: Long): Boolean {
@@ -330,16 +325,35 @@ class NetworkTraffic private constructor(
 		private var refreshInterval = 1 //seconds
 		private var showIcons = true
 
+		@ColorInt
+		private var downloadColor: Int = Color.GREEN
+		@ColorInt
+		private var uploadColor: Int = Color.RED
+		private var colorTraffic: Boolean = false
 		private var opacity = 100
 		private var lastParamUpdate: Long = 0
 		private var showInBits = false
 
 		@JvmStatic
-		fun setConstants(refreshInterval: Int, autoHideThreshold: Int, indicatorMode: Int, RXonTop: Boolean, opacity: Int, showIcons: Boolean, showInBits: Boolean) {
+		fun setConstants(
+			refreshInterval: Int,
+			autoHideThreshold: Int,
+			indicatorMode: Int,
+			RXonTop: Boolean,
+			colorTraffic: Boolean,
+			downloadColor: Int,
+			uploadColor: Int,
+			opacity: Int,
+			showIcons: Boolean,
+			showInBits: Boolean
+		) {
 			Companion.refreshInterval = refreshInterval
 			Companion.autoHideThreshold = autoHideThreshold * KB
 			Companion.indicatorMode = indicatorMode
 			Companion.RXonTop = RXonTop
+			Companion.colorTraffic = colorTraffic
+			Companion.downloadColor = downloadColor
+			Companion.uploadColor = uploadColor
 			Companion.opacity = opacity
 			Companion.showIcons = showIcons
 			Companion.showInBits = showInBits
