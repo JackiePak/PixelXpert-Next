@@ -4,7 +4,6 @@
     <string name="app_themed_icon_title">Biểu tượng theo chủ đề thay thế</string>
     <string name="xposed_desc">Các tùy chỉnh cho thiết bị Google Pixel</string>
     <string name="volume_tile_title">Âm lượng đa phương tiện</string>
-    <string name="sliding_tile_subtitle">Nhấn để điều chỉnh</string>
     <string name="app_switch_tile_title">Chuyển hồ sơ ứng dụng</string>
     <string name="hide_default">Ẩn (Mặc định)</string>
     <string name="percent_of_default_size">% kích thước mặc định</string>
@@ -235,10 +234,7 @@
     <string name="friday">Thứ sáu</string>
     <string name="saturday">Thứ bảy</string>
     <!--Quick settings panel related-->
-    <string name="qs_leveled_flashlight_title">Mức sáng đèn pin</string>
-    <string name="qs_flashlight_level_global_title">Áp dụng mức đèn pin mặc định</string>
     <string name="qs_tile_qty_title">Cài đặt nhanh số lượng ô cài đặt</string>
-    <string name="qs_leveled_flashlight_summary">Nhấn giữ trên dấu gạch để hiển thị thanh trượt. \nYêu cầu phần cứng hỗ trợ</string>
     <string name="qs_pulldown_size">Chiều rộng kéo xuống nhanh</string>
     <string name="qs_pulldown_switch_title">Kéo xuống nhanh bảng cài đặt từ thanh trạng thái</string>
     <string name="qs_pulldown_side_title">Mặt kéo xuống nhanh</string>

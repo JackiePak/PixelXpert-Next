@@ -9,7 +9,6 @@
     <string name="high_brightness_flashlight_tile_title">High Brightness Flashlight</string>
     <string name="enable_high_brightness_flashlight_title">High Brightness Flashlight</string>
     <string name="enable_high_brightness_flashlight_summary">Utilizes camera to reach higher brightness than what the system allows. Uses more power!</string>
-    <string name="sliding_tile_subtitle">Tap to adjust</string>
     <string name="app_switch_tile_title">Switch App Profile</string>
     <string name="hide_default">Hide (Default)</string>
     <string name="percent_of_default_size">% of default size</string>
@@ -252,10 +251,7 @@
 
 
     <!--Quick settings panel related-->
-    <string name="qs_leveled_flashlight_title">Flashlight-leveled tile</string>
-    <string name="qs_flashlight_level_global_title">Apply flashlight level globally</string>
     <string name="qs_tile_qty_title">Quick settings tile count settings</string>
-    <string name="qs_leveled_flashlight_summary">Longpress on tile to show the slider.\nRequires supported hardware</string>
     <string name="qs_pulldown_size">Quick pull-down width</string>
     <string name="qs_pulldown_switch_title">Quick QS panel pull-down from status bar</string>
     <string name="qs_pulldown_side_title">Quick pull-down side</string>

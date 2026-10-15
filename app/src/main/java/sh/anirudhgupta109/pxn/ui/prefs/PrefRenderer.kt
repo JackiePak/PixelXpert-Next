@@ -379,7 +379,6 @@ private fun visibleBy(store: PrefStore, key: String?): Boolean {
 			"QSPulldownPercent", "QSPulldownSide", "oneFingerPullupEnabled" ->
 				store.getBoolean("QSPullodwnEnabled", false)
 
-			"isFlashLevelGlobal" -> store.getBoolean("leveledFlashTile", false)
 			"BackLeftHeight" -> store.getBoolean("BackFromLeft", true)
 			"BackRightHeight" -> store.getBoolean("BackFromRight", true)
 

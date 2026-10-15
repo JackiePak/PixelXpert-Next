@@ -4,7 +4,6 @@
     <string name="app_themed_icon_title">Pictogramă tematică alternativă</string>
     <string name="xposed_desc">Personalizări pentru dispozitivele Google Pixel</string>
     <string name="volume_tile_title">Volumul media</string>
-    <string name="sliding_tile_subtitle">Atinge pentru a regla</string>
     <string name="app_switch_tile_title">Schimbă profilul aplicației</string>
     <string name="hide_default">Ascuns (implicit)</string>
     <string name="percent_of_default_size">% din dimensiunea implicită</string>
@@ -235,10 +234,7 @@
     <string name="friday">Vineri</string>
     <string name="saturday">Sâmbătă</string>
     <!--Quick settings panel related-->
-    <string name="qs_leveled_flashlight_title">Dală lanternă</string>
-    <string name="qs_flashlight_level_global_title">Aplică nivelul lanternei global</string>
     <string name="qs_tile_qty_title">Setarea numărului plăcilor</string>
-    <string name="qs_leveled_flashlight_summary">Apasă lung pe dală pentru a afișa glisorul.\nNecesită suport hardware</string>
     <string name="qs_pulldown_size">Lățime tragere rapidă</string>
     <string name="qs_pulldown_switch_title">Panou setări rapide la tragere în jos a barei de stare</string>
     <string name="qs_pulldown_side_title">Poziție tragere rapidă în jos</string>

@@ -224,6 +224,16 @@ class KeyguardMods(context: Context) : XposedModPack(context) {
 				param.setResult(null)
 			}
 
+		ReflectedClass.of(CameraManager::class.java)
+			.before("turnOnTorchWithStrengthLevel")
+			.run { param ->
+				if (AnimateFlashlight) {
+					val level = param.args[1] as Int
+					SystemUtils.setFlash(true, level, !SystemUtils.isFlashOn())
+					param.setResult(false)
+				}
+			}
+
 		DefaultShortcutsSectionClass
 			.after("addViews")
 			.run { param ->
@@ -579,7 +589,7 @@ class KeyguardMods(context: Context) : XposedModPack(context) {
 			}
 		}
 
-		// Same deprecated callback as FlashlightTile's: still what SystemUI calls.
+		// Deprecated callback, but still what SystemUI calls.
 		@Suppress("OVERRIDE_DEPRECATION")
 		override fun getOpacity(): Int {
 			return mDrawable.getOpacity()

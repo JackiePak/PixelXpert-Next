@@ -4,7 +4,6 @@
     <string name="app_themed_icon_title">Ikona s alternativní tématikou</string>
     <string name="xposed_desc">Přizpůsobení zařízení Google Pixel</string>
     <string name="volume_tile_title">Hlasitost médií</string>
-    <string name="sliding_tile_subtitle">Tap to adjust</string>
     <string name="app_switch_tile_title">Přepnout profil aplikace</string>
     <string name="hide_default">Skrýt (výchozí)</string>
     <string name="percent_of_default_size">% výchozí velikosti</string>
@@ -235,10 +234,7 @@
     <string name="friday">pátek</string>
     <string name="saturday">sobota</string>
     <!--Quick settings panel related-->
-    <string name="qs_leveled_flashlight_title">Flashlight-leveled tile</string>
-    <string name="qs_flashlight_level_global_title">Použijte úroveň baterky globálně</string>
     <string name="qs_tile_qty_title">Rychlé nastavení nastavení počtu dlaždic</string>
-    <string name="qs_leveled_flashlight_summary">Longpress on tile to show the slider.\nRequires supported hardware</string>
     <string name="qs_pulldown_size">Rychlá stahovací šířka</string>
     <string name="qs_pulldown_switch_title">Rychlé stahování panelu QS ze stavového řádku</string>
     <string name="qs_pulldown_side_title">Rychlá stahovací strana</string>

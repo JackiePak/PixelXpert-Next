@@ -4,7 +4,6 @@
     <string name="app_themed_icon_title">Icône avec thème alternatif</string>
     <string name="xposed_desc">Personnalisations pour les appareils Google Pixel</string>
     <string name="volume_tile_title">Volume des médias</string>
-    <string name="sliding_tile_subtitle">Appuyer pour ajuster</string>
     <string name="app_switch_tile_title">Changer de profil d\'application</string>
     <string name="hide_default">Cacher (par défaut)</string>
     <string name="percent_of_default_size">% de la taille par défaut</string>
@@ -235,10 +234,7 @@
     <string name="friday">Vendredi</string>
     <string name="saturday">Samedi</string>
     <!--Quick settings panel related-->
-    <string name="qs_leveled_flashlight_title">Tuile pour lampe torche</string>
-    <string name="qs_flashlight_level_global_title">Change le niveau pour tout l’appareil</string>
     <string name="qs_tile_qty_title">Préférences du nombre de blocs</string>
-    <string name="qs_leveled_flashlight_summary">Appui long sur la tuile pour afficher le curseur.\nNécessite un matériel compatible</string>
     <string name="qs_pulldown_size">Largeur pour l’accès rapide</string>
     <string name="qs_pulldown_switch_title">Accès rapide depuis la barre d’état</string>
     <string name="qs_pulldown_side_title">Côté pour l’accès rapide</string>

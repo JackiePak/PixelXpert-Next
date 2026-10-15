@@ -13,8 +13,6 @@ val quicksettings_prefs: PrefScreen = PrefScreen(
 	ignore = true,
 	children = listOf(
 				SliderPref(key = "UnMuteVolumePCT", title = R.string.qs_volume_unmute_title, default = "50", continuous = true),
-				SwitchPref(key = "leveledFlashTile", title = R.string.qs_leveled_flashlight_title, summary = R.string.qs_leveled_flashlight_summary, default = "false"),
-				SwitchPref(key = "isFlashLevelGlobal", title = R.string.qs_flashlight_level_global_title, default = "false", summaryOn = R.string.general_on, summaryOff = R.string.general_off),
 				NavRow(key = "qs_tile_qty", title = R.string.qs_tile_qty_title, route = "qstile_qty"),
 				SliderPref(key = "QSLabelScaleFactor", title = R.string.qs_tile_label_size, default = "0", min = -50f, max = 50f, step = 5f, continuous = true),
 				SliderPref(key = "QSSecondaryLabelScaleFactor", title = R.string.qs_tile_secondary_label_size, default = "0", min = -50f, max = 50f, step = 5f, continuous = true),

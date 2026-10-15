@@ -4,7 +4,6 @@
     <string name="app_themed_icon_title">Альтернативна тематична іконка</string>
     <string name="xposed_desc">Налаштування для пристроїв Google Pixel</string>
     <string name="volume_tile_title">Гучність носія</string>
-    <string name="sliding_tile_subtitle">Торкніться для налаштування</string>
     <string name="app_switch_tile_title">Змінити профіль програми</string>
     <string name="hide_default">Сховати (За замовчуванням)</string>
     <string name="percent_of_default_size">% від звичайного розміру</string>
@@ -235,10 +234,7 @@
     <string name="friday">П\'ятниця</string>
     <string name="saturday">Субота</string>
     <!--Quick settings panel related-->
-    <string name="qs_leveled_flashlight_title">Flashlight-leveled tile</string>
-    <string name="qs_flashlight_level_global_title">Застосувати рівень ліхтарика глобально</string>
     <string name="qs_tile_qty_title">Налаштування кількості плиток швидкого налаштування</string>
-    <string name="qs_leveled_flashlight_summary">Longpress on tile to show the slider.\nRequires supported hardware</string>
     <string name="qs_pulldown_size">Ширина Швидких налагтувань</string>
     <string name="qs_pulldown_switch_title">Розкривний список панелі швидких налаштувань у рядку стану</string>
     <string name="qs_pulldown_side_title">Потягніть вниз</string>

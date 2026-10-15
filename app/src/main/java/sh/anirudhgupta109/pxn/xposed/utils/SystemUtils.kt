@@ -144,15 +144,7 @@ class SystemUtils(context: Context) {
 				return
 			}
 
-			if (Xprefs.getBoolean("leveledFlashTile", false) &&
-				Xprefs.getBoolean("isFlashLevelGlobal", false) &&
-				supportsFlashLevelsInternal()
-			) {
-				val currentPct = Xprefs.getInt("flashPCT", 50) / 100f
-				setFlashInternalWithLevel(enabled, getFlashlightLevelInternal(currentPct), animate)
-			} else {
-				setFlashInternalNoLevel(enabled, animate)
-			}
+			setFlashInternalNoLevel(enabled, animate)
 		} catch (t: Throwable) {
 			if (BuildConfig.DEBUG) {
 				Logger.log("PixelXpert Error in setting flashlight")
@@ -385,7 +377,7 @@ class SystemUtils(context: Context) {
 		} catch (e: Throwable) {
 			Xprefs.getInt(
 				"cachedFlashLevel",
-				Math.round(Xprefs.getInt("flashPCT", 50) / 100f * getMaxFlashLevel()),
+				Math.round(0.5f * getMaxFlashLevel()),
 			)
 		} finally {
 			android.os.Binder.restoreCallingIdentity(token)
