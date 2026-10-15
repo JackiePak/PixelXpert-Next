@@ -13,7 +13,7 @@ jobs:
 
   synchronize-with-crowdin:
     name: Download translations from Crowdin
-    if: github.repository_owner == 'siavash79'
+    if: github.repository_owner == 'anirudhgupta109'
     runs-on: ubuntu-latest
     steps:
 
@@ -26,7 +26,7 @@ jobs:
           upload_translations: false
           upload_sources: false
           download_translations: true
-          localization_branch_name: canary
+          localization_branch_name: main
           create_pull_request: false
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

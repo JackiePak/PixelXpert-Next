@@ -78,8 +78,8 @@ The module is also released in 2 flavors with different manual download and upda
 <hr>
 
 ### **Translations:**  
-[![Crowdin](https://badges.crowdin.net/aospmods/localized.svg)](https://crowdin.com/project/aospmods)  
-Want to help translate PixelXpert to your language? Visit [Crowdin](https://crowdin.com/project/aospmods)
+[![Crowdin](https://badges.crowdin.net/pixelxpert-next/localized.svg)](https://crowdin.com/project/pixelxpert-next)  
+Want to help translate PixelXpert-Next to your language? Visit [Crowdin](https://crowdin.com/project/pixelxpert-next)
 <hr>
 
 ### **Donations:**
