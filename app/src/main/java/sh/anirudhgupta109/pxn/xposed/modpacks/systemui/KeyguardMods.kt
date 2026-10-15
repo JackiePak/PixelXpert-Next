@@ -220,17 +220,23 @@ class KeyguardMods(context: Context) : XposedModPack(context) {
 		ReflectedClass.of(CameraManager::class.java)
 			.before("setTorchMode")
 			.run { param ->
-				SystemUtils.setFlash(param.args[1] as Boolean, AnimateFlashlight)
-				param.setResult(null)
+				if (SystemUtils.isInternalTorchCall) return@run
+				if (AnimateFlashlight) {
+					SystemUtils.setFlash(param.args[1] as Boolean, true)
+					param.setResult(null)
+				}
 			}
 
 		ReflectedClass.of(CameraManager::class.java)
 			.before("turnOnTorchWithStrengthLevel")
 			.run { param ->
+				if (SystemUtils.isInternalTorchCall) return@run
 				if (AnimateFlashlight) {
 					val level = param.args[1] as Int
-					SystemUtils.setFlash(true, level, !SystemUtils.isFlashOn())
-					param.setResult(false)
+					if (!SystemUtils.isFlashOn()) {
+						SystemUtils.setFlash(true, level, true)
+						param.setResult(null)
+					}
 				}
 			}
 

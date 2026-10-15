@@ -324,6 +324,53 @@ object SystemUIInspector {
 			)
 		)
 
+		qsItems.add(
+			InspectionUtils.checkMethod(
+				classLoader,
+				"android.hardware.camera2.CameraManager",
+				"setTorchMode",
+				"CameraManager#setTorchMode (AnimateFlashlight)",
+				utilized = true,
+			)
+		)
+
+		qsItems.add(
+			InspectionUtils.checkMethod(
+				classLoader,
+				"android.hardware.camera2.CameraManager",
+				"turnOnTorchWithStrengthLevel",
+				"CameraManager#turnOnTorchWithStrengthLevel (AnimateFlashlight)",
+				utilized = true,
+			)
+		)
+
+		qsItems.add(
+			InspectionUtils.checkMethod(
+				classLoader,
+				"android.hardware.camera2.CameraManager",
+				"getTorchStrengthLevel",
+				"CameraManager#getTorchStrengthLevel (Flashlight Level Tracking)",
+				utilized = true,
+			)
+		)
+
+		val leveledFlashlightRepo = InspectionUtils.checkClass(
+			classLoader,
+			"com.android.systemui.flashlight.data.repository.FlashlightRepositoryImpl",
+			"FlashlightRepositoryImpl (Leveled Pipeline)",
+		)
+		val isLeveledFlashlight = leveledFlashlightRepo.status == AuditStatus.PRESENT
+		qsItems.add(leveledFlashlightRepo.copy(utilized = isLeveledFlashlight))
+
+		qsItems.add(
+			InspectionUtils.checkClass(
+				classLoader,
+				"com.android.systemui.statusbar.policy.FlashlightControllerImpl",
+				"FlashlightControllerImpl (Legacy Pipeline)",
+				utilized = !isLeveledFlashlight,
+			)
+		)
+
 		val qsSummary = if (isQqsInlined) {
 			"SYSTEM UTILIZING: INLINED QQS REPOSITORY. QuickQuickSettingsRowRepository constructor is inlined by R8 (0 constructors). System instantiates QuickQuickSettingsRowInteractor; hook must target QuickQuickSettingsRowInteractor.<init> to inject fake Resources."
 		} else {

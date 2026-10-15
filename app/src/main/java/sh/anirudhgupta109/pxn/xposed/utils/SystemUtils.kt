@@ -98,6 +98,8 @@ class SystemUtils(context: Context) {
 	private var mUserManager: UserManager? = null
 	private var mHandler: Handler? = null
 	private var mSetTorchModeMethod: Method? = null
+	private var mTurnOnTorchWithStrengthLevelMethod: Method? = null
+	private var mFlashAnimator: ValueAnimator? = null
 
 	init {
 		instance = this
@@ -164,11 +166,16 @@ class SystemUtils(context: Context) {
 			} else {
 				// `!!` throws the same NPE the Java field dereference would, and
 				// it happens inside this try, so it degrades identically.
-				invokeOriginalMethod(
-					mSetTorchModeMethod!!,
-					getCameraManager(),
-					arrayOf<Any>(getFlashID(getCameraManager()), enabled),
-				)
+				try {
+					isInternalTorchCall = true
+					invokeOriginalMethod(
+						mSetTorchModeMethod!!,
+						getCameraManager(),
+						arrayOf<Any>(getFlashID(getCameraManager()), enabled),
+					)
+				} finally {
+					isInternalTorchCall = false
+				}
 			}
 		} catch (ignored: Throwable) {
 		}
@@ -176,29 +183,54 @@ class SystemUtils(context: Context) {
 
 	private fun animateFlashLightOn(level: Int) {
 		mHandler!!.post {
+			mFlashAnimator?.cancel()
+			val targetLevel = if (level > 0) level else getMaxFlashLevel()
 			val valueAnimator = ValueAnimator
-				.ofInt(0, level)
+				.ofInt(0, targetLevel)
 				.setDuration(FADE_DURATION.toLong())
 			valueAnimator.addUpdateListener { animation ->
 				setFlashLevel(true, animation.animatedValue as Int)
 			}
+			valueAnimator.addListener(object : AnimatorListenerAdapter() {
+				override fun onAnimationEnd(animation: Animator) {
+					if (mFlashAnimator === animation) {
+						mFlashAnimator = null
+					}
+				}
+			})
+			mFlashAnimator = valueAnimator
 			valueAnimator.start()
 		}
 	}
 
 	private fun animateFlashLightOff() {
 		mHandler!!.post {
+			mFlashAnimator?.cancel()
+			val currentLevel = getFlashStrengthInternal()
+			val startLevel = if (currentLevel > 0) currentLevel else getMaxFlashLevel()
 			val valueAnimator = ValueAnimator
-				.ofInt(getFlashStrengthInternal(), 0)
-				.setDuration(500)
+				.ofInt(startLevel, 0)
+				.setDuration(FADE_DURATION.toLong())
 			valueAnimator.addUpdateListener { animation ->
 				setFlashLevel(true, animation.animatedValue as Int)
 			}
 			valueAnimator.addListener(object : AnimatorListenerAdapter() {
+				private var isCancelled = false
+
+				override fun onAnimationCancel(animation: Animator) {
+					isCancelled = true
+				}
+
 				override fun onAnimationEnd(animation: Animator) {
-					setFlashInternalNoLevel(false, false)
+					if (!isCancelled) {
+						setFlashInternalNoLevel(false, false)
+					}
+					if (mFlashAnimator === animation) {
+						mFlashAnimator = null
+					}
 				}
 			})
+			mFlashAnimator = valueAnimator
 			valueAnimator.start()
 		}
 	}
@@ -297,11 +329,21 @@ class SystemUtils(context: Context) {
 					try {
 						val token = android.os.Binder.clearCallingIdentity()
 						try {
-							ReflectedMethod.ofName(
-								ReflectedClass.of(CameraManager::class.java),
-								"turnOnTorchWithStrengthLevel",
-							).invokeOriginal(getCameraManager(), flashID, max(level, 1))
+							isInternalTorchCall = true
+							if (mTurnOnTorchWithStrengthLevelMethod != null) {
+								invokeOriginalMethod(
+									mTurnOnTorchWithStrengthLevelMethod!!,
+									getCameraManager(),
+									arrayOf<Any>(flashID, max(level, 1)),
+								)
+							} else {
+								ReflectedMethod.ofName(
+									ReflectedClass.of(CameraManager::class.java),
+									"turnOnTorchWithStrengthLevel",
+								).invokeOriginal(getCameraManager(), flashID, max(level, 1))
+							}
 						} finally {
+							isInternalTorchCall = false
 							android.os.Binder.restoreCallingIdentity(token)
 						}
 					} catch (t: Throwable) {
@@ -517,6 +559,16 @@ class SystemUtils(context: Context) {
 					java.lang.Boolean.TYPE,
 				)
 
+				mTurnOnTorchWithStrengthLevelMethod = try {
+					CameraManager::class.java.getMethod(
+						"turnOnTorchWithStrengthLevel",
+						String::class.java,
+						java.lang.Integer.TYPE,
+					)
+				} catch (ignored: Throwable) {
+					null
+				}
+
 				cameraManager.registerTorchCallback(object : CameraManager.TorchCallback() {
 					override fun onTorchModeChanged(cameraId: String, enabled: Boolean) {
 						super.onTorchModeChanged(cameraId, enabled)
@@ -661,6 +713,9 @@ class SystemUtils(context: Context) {
 
 		@Volatile
 		internal var isTorchOn = false
+
+		@Volatile
+		internal var isInternalTorchCall = false
 
 		@Volatile
 		internal var darkSwitching = false
