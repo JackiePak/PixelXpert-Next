@@ -38,6 +38,16 @@ object FrameworkInspector {
 		)
 
 		frameworkItems.add(
+			InspectionUtils.checkMethod(
+				loader,
+				"com.android.server.policy.PhoneWindowManager",
+				"showGlobalActions",
+				"PhoneWindowManager#showGlobalActions (Lockscreen Power Menu Blocker)",
+				utilized = true,
+			)
+		)
+
+		frameworkItems.add(
 			InspectionUtils.checkClass(
 				loader,
 				"com.android.server.policy.PhoneWindowManager\$PowerKeyRule",

@@ -39,6 +39,7 @@ val lock_screen_prefs: PrefScreen = PrefScreen(
 				SwitchPref(key = "easyUnlockEnabled", title = R.string.easy_unlock_title, summary = R.string.easy_unlock_summary, default = "false"),
 				SwitchPref(key = "ShowChargingInfo", title = R.string.charging_info_title, default = "false", summaryOn = R.string.general_on, summaryOff = R.string.general_off),
 				SwitchPref(key = "DisableLockScreenPill", title = R.string.disable_lockscreen_pill_title, summary = R.string.sysui_restart_needed, default = "false"),
+				SwitchPref(key = "BlockQSPowerOnLockscreen", title = R.string.block_qs_power_on_lockscreen_title, summary = R.string.block_qs_power_on_lockscreen_summary, default = "false"),
 	),
 			),
 			Category(

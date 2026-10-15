@@ -459,6 +459,46 @@ object SystemUIInspector {
 		}
 		lockscreenItems.add(udfpsController)
 
+		lockscreenItems.add(
+			InspectionUtils.checkMethod(
+				classLoader,
+				"com.android.systemui.qs.tileimpl.QSTileImpl",
+				"click",
+				"QSTileImpl#click (Lockscreen Sensitive QS Tile Blocker)",
+				utilized = true,
+			)
+		)
+
+		lockscreenItems.add(
+			InspectionUtils.checkMethod(
+				classLoader,
+				"com.android.systemui.qs.tiles.dialog.InternetDialogManager",
+				"create",
+				"InternetDialogManager#create (Lockscreen Internet Dialog Blocker)",
+				utilized = true,
+			)
+		)
+
+		lockscreenItems.add(
+			InspectionUtils.checkMethod(
+				classLoader,
+				"com.android.systemui.bluetooth.qsdialog.BluetoothTileDialogDelegate",
+				"createDialog",
+				"BluetoothTileDialogDelegate#createDialog (Lockscreen BT Dialog Blocker)",
+				utilized = true,
+			)
+		)
+
+		lockscreenItems.add(
+			InspectionUtils.checkMethod(
+				classLoader,
+				"com.android.systemui.globalactions.GlobalActionsDialogLite",
+				"showOrHideDialog",
+				"GlobalActionsDialogLite#showOrHideDialog (Lockscreen Power Menu Blocker)",
+				utilized = true,
+			)
+		)
+
 		// ==========================================
 		// 4. GESTURES & NAVIGATION MODULE
 		// ==========================================

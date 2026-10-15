@@ -23,6 +23,7 @@ val preferenceDefaults: Map<String, String?> = mapOf(
 	"BackLeftHeight" to "100",
 	"BackRightHeight" to "100",
 	"BeforeSBCSmall" to "true",
+	"BlockQSPowerOnLockscreen" to "false",
 	"BrightnessRange" to "0,100",
 	"DWOpacity" to "192",
 	"DWallpaperEnabled" to "false",
