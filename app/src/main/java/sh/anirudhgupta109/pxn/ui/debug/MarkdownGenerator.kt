@@ -12,6 +12,7 @@ object MarkdownGenerator {
 	fun generate(
 		device: DeviceDetails,
 		reports: List<ProcessAuditReport>,
+		preferences: Map<String, Any?>,
 	): String {
 		val sb = StringBuilder()
 		val timestamp = SimpleDateFormat("yyyy-MM-dd HH:mm:ss z", Locale.US).format(Date())
@@ -93,6 +94,34 @@ object MarkdownGenerator {
 			}
 		}
 
+		// 4. Preferences as the hooks see them
+		sb.appendLine("## PixelXpert Preferences")
+		if (preferences.isEmpty()) {
+			sb.appendLine("*Preference store is empty.*")
+			sb.appendLine()
+		} else {
+			sb.appendLine("| Preference | Value |")
+			sb.appendLine("|---|---|")
+			preferences.entries
+				.sortedBy { it.key }
+				.forEach { (key, value) ->
+					sb.appendLine("| `${cell(key)}` | ${cell(preferenceValue(value))} |")
+				}
+			sb.appendLine()
+		}
+
 		return sb.toString()
 	}
+
+	/** Values are stored under a type, so keep the type visible: `"true"` vs `true`. */
+	private fun preferenceValue(value: Any?): String = when (value) {
+		null -> "—"
+		is String -> if (value.isEmpty()) "(empty)" else "`$value`"
+		is Set<*> -> value.joinToString(", ")
+		else -> value.toString()
+	}
+
+	/** Keeps a key or value from breaking out of its table cell. */
+	private fun cell(raw: String): String =
+		raw.replace("\n", " ").replace("|", "\\|")
 }

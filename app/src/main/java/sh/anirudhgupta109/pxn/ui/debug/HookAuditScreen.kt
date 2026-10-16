@@ -60,6 +60,7 @@ import androidx.compose.ui.unit.sp
 import com.google.gson.Gson
 import sh.anirudhgupta109.pxn.Constants
 import sh.anirudhgupta109.pxn.R
+import sh.anirudhgupta109.pxn.data.PrefStore
 import sh.anirudhgupta109.pxn.ui.debug.model.AuditStatus
 import sh.anirudhgupta109.pxn.ui.debug.model.DeviceDetails
 import sh.anirudhgupta109.pxn.ui.debug.model.ProcessAuditReport
@@ -79,6 +80,9 @@ fun HookAuditScreen() {
 			}
 		}.start()
 	}
+
+	fun preferenceSnapshot(): Map<String, Any?> =
+		runCatching { PrefStore.open(context).all.toMap() }.getOrDefault(emptyMap())
 
 	DisposableEffect(context) {
 		val receiver = object : BroadcastReceiver() {
@@ -112,14 +116,14 @@ fun HookAuditScreen() {
 	}
 
 	fun copyReport() {
-		val markdown = MarkdownGenerator.generate(device, reports.values.toList())
+		val markdown = MarkdownGenerator.generate(device, reports.values.toList(), preferenceSnapshot())
 		val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
 		clipboard.setPrimaryClip(ClipData.newPlainText("PixelXpert Audit", markdown))
 		Toast.makeText(context, context.getString(R.string.hook_audit_copied), Toast.LENGTH_SHORT).show()
 	}
 
 	fun exportReport() {
-		val markdown = MarkdownGenerator.generate(device, reports.values.toList())
+		val markdown = MarkdownGenerator.generate(device, reports.values.toList(), preferenceSnapshot())
 		val rawBuild = device.buildId.ifBlank { device.buildDisplay }
 		val buildPrefix = rawBuild.substringBefore('.').filter { it.isLetterOrDigit() }
 		val buildTag = (if (buildPrefix.length >= 4) buildPrefix.take(4) else rawBuild.filter { it.isLetterOrDigit() }.take(4))
