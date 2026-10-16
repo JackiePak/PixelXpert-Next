@@ -159,6 +159,36 @@ object SystemUIInspector {
 			)
 		)
 
+		statusbarItems.add(
+			InspectionUtils.checkMethod(
+				classLoader,
+				"com.android.systemui.statusbar.pipeline.shared.ui.viewmodel.HomeStatusBarViewModelImpl\$isClockVisible\$1",
+				"invoke",
+				"HomeStatusBarViewModelImpl\$isClockVisible\$1#invoke (Clock Visibility Mirror)",
+				utilized = isComposeClockPresent,
+			)
+		)
+
+		statusbarItems.add(
+			InspectionUtils.checkField(
+				classLoader,
+				"com.android.systemui.statusbar.pipeline.shared.domain.model.StatusBarDisableFlagsVisibilityModel",
+				"isClockAllowed",
+				"StatusBarDisableFlagsVisibilityModel.isClockAllowed (Clock Visibility Input)",
+				utilized = isComposeClockPresent,
+			)
+		)
+
+		statusbarItems.add(
+			InspectionUtils.checkMethod(
+				classLoader,
+				"androidx.compose.ui.platform.AbstractComposeView",
+				"disposeComposition",
+				"AbstractComposeView#disposeComposition (Clock Re-parent Guard)",
+				utilized = isComposeClockPresent,
+			)
+		)
+
 		val sbNicVmConstructor = InspectionUtils.checkConstructor(
 			classLoader,
 			"com.android.systemui.statusbar.notification.icon.ui.viewmodel.NotificationIconContainerStatusBarViewModel",

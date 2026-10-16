@@ -23,6 +23,7 @@ import android.text.SpannableStringBuilder
 import android.text.Spanned
 import android.text.style.CharacterStyle
 import android.text.style.RelativeSizeSpan
+import android.util.TypedValue
 import android.view.Gravity
 import android.view.View
 import android.view.ViewGroup
@@ -43,7 +44,6 @@ import java.util.Locale
 import java.util.Timer
 import java.util.TimerTask
 import java.util.concurrent.Executor
-import java.util.function.Function
 import javax.security.auth.callback.Callback
 import org.objenesis.ObjenesisHelper
 import sh.anirudhgupta109.pxn.BuildConfig
@@ -92,6 +92,9 @@ class StatusbarMods @SuppressLint("DiscouragedApi") constructor(context: Context
 
 		private const val AM_PM_STYLE_SMALL = 1
 		private const val AM_PM_STYLE_GONE = 2
+
+		/** U+200B, zero width but full line height; keeps a 70% line box full. */
+		private const val ZERO_WIDTH_SPACE = "\u200b"
 		private var isJetpackClock = false
 
 		@JvmStatic
@@ -211,6 +214,16 @@ class StatusbarMods @SuppressLint("DiscouragedApi") constructor(context: Context
 	private var mBeforeClockColor: Int? = null
 	private var mAfterClockColor: Int? = null
 	private var clockColor: Int? = null
+
+	// The Compose clock renders the whole time string itself,
+	// it is re-parented between these two TextViews.
+	private var mClockContainer: LinearLayout? = null
+	private var mBeforeClockView: TextView? = null
+	private var mAfterClockView: TextView? = null
+	// One callback for the whole container
+	private var mCompanionFormatCallback: FormattedStringCallback? = null
+	// Mirrors SystemUI's own clock visibility
+	private var mStatusBarClockVisible = true
 	//endregion
 
 	init {
@@ -551,6 +564,8 @@ class StatusbarMods @SuppressLint("DiscouragedApi") constructor(context: Context
 				callMethod(getObjectField(mClockView, "mCalendar"), "setTimeInMillis", System.currentTimeMillis())
 
 				mClockView!!.text = callMethod(mClockView, "getSmallTime") as CharSequence
+				// The Compose clock repaints itself; refresh TextViews on every tick.
+				updateClockCompanionViews()
 			}
 		} catch (ignored: Throwable) {
 		}
@@ -609,6 +624,38 @@ class StatusbarMods @SuppressLint("DiscouragedApi") constructor(context: Context
 					}
 				}
 			}
+
+		// The Compose clock is faded out with a Compose modifier, mirror the decision
+		try {
+			val isClockVisibleClass = ReflectedClass.ofIfPossible(
+				"com.android.systemui.statusbar.pipeline.shared.ui.viewmodel.HomeStatusBarViewModelImpl\$isClockVisible\$1",
+			)
+			if (isClockVisibleClass.clazz != null) {
+				isClockVisibleClass
+					.after("invoke")
+					.run { param ->
+						val args = param.args
+						if (args != null && args.size >= 3 && args[0] is Boolean) {
+							// Combine takes (allowed, suppressed, disableFlags, cont) on some
+							// (allowed, disableFlags, cont) on others.
+							val allowedByPolicy = args[0] as Boolean
+							val isSuppressed = args[1] as? Boolean ?: false
+							val disableFlags = asDisableFlagsVisibilityModel(args[1])
+								?: asDisableFlagsVisibilityModel(args[2])
+							if (disableFlags != null) {
+								val isClockAllowed = getBooleanField(disableFlags, "isClockAllowed")
+								val visible = allowedByPolicy && !isSuppressed && isClockAllowed
+								if (visible != mStatusBarClockVisible) {
+									mStatusBarClockVisible = visible
+									runOnMainThread { updateClockCompanionViews() }
+								}
+							}
+						}
+					}
+			}
+		} catch (t: Throwable) {
+			log(t)
+		}
 
 		CommandQueueClass
 			.afterConstruction()
@@ -815,6 +862,10 @@ class StatusbarMods @SuppressLint("DiscouragedApi") constructor(context: Context
 
 				mSystemIconArea = mPhoneStatusbarView!!.findViewById(SystemUtils.idOf("statusIcons"))
 
+				if (isJetpackClock) {
+					mJetpackClockView = findComposeView(mStatusbarStartSide)
+				}
+
 				createCenterIconArea()
 
 				makeLeftSplitArea()
@@ -843,61 +894,24 @@ class StatusbarMods @SuppressLint("DiscouragedApi") constructor(context: Context
 			}
 
 		//clock mods
-		try {
-			val clockInteractorClass = ReflectedClass.of("com.android.systemui.clock.domain.interactor.ClockInteractor")
-			val hooks = clockInteractorClass.after("getClockTextFormatString").run { param ->
-				val orig: String = param.getResult()
+		// ClockKt is what says the status-bar clock lives in a ComposeView.
+		val hasComposeClock = ReflectedClass.ofIfPossible("com.android.systemui.clock.ui.composable.ClockKt").clazz != null
+		if (hasComposeClock) {
+			try {
+				val clockInteractorClass = ReflectedClass.of("com.android.systemui.clock.domain.interactor.ClockInteractor")
+				clockInteractorClass.after("getClockTextFormatString").run { param ->
+					val orig: String = param.getResult()
 
-				// Force leading zero for 24-hour format (e.g. 00:23 instead of 0:23)
-				var customFormat = orig.replace(Regex("(?<!H)H(?!H)"), "HH")
+					// Force leading zero for 24-hour format (e.g. 00:23 instead of 0:23).
+					val customFormat = orig.replace(Regex("(?<!H)H(?!H)"), "HH").trim()
 
-				// 1. apply am/pm (Since Compose renders as String, this will be 100% size)
-				if (mAmPmStyle != AM_PM_STYLE_GONE && !customFormat.contains("a")) {
-					customFormat = customFormat + " a"
-				} else if (mAmPmStyle == AM_PM_STYLE_GONE && customFormat.contains("a")) {
-					customFormat = customFormat.replace(" a", "").replace(" a", "").replace("a", "")
+					param.setResult(customFormat)
 				}
-
-				// Fix native SystemUI bug: remove trailing spaces left over from removing seconds or AM/PM
-				customFormat = customFormat.trim()
-
-				// 3. custom text before / after
-				val escapeAll = Function<String?, String?> { input ->
-					if (input == null || input.isEmpty()) "" else "'" + input.replace("'", "''") + "'"
-				}
-
-				if (!mStringFormatBefore.isEmpty()) {
-					customFormat = escapeAll.apply(mStringFormatBefore.trim()) + " " + customFormat
-				}
-				if (!mStringFormatAfter.isEmpty()) {
-					customFormat = customFormat + " " + escapeAll.apply(mStringFormatAfter.trim())
-				}
-				param.setResult(customFormat)
+			} catch (t: Throwable) {
+				log("ClockInteractor not found, skipping Android 17 Compose hook.")
 			}
-
-			clockInteractorClass.after("createFormatters").run { param ->
-				val formatters: Any? = param.getResult()
-				if (formatters == null) return@run
-
-				val amPmShown = getObjectField(formatters, "clockTextAmPmShown") as java.text.SimpleDateFormat
-				val amPmGone = getObjectField(formatters, "clockTextAmPmGone") as java.text.SimpleDateFormat
-
-				class PXNClockFormatter(pattern: String) : java.text.SimpleDateFormat(pattern) {
-					override fun format(date: java.util.Date, toAppendTo: StringBuffer, pos: java.text.FieldPosition): StringBuffer {
-						val original = super.format(date, StringBuffer(), pos)
-						val formatted: CharSequence = stringFormatter.formatString(original.toString())
-						toAppendTo.append(formatted)
-						return toAppendTo
-					}
-				}
-
-				setObjectField(formatters, "clockTextAmPmShown", PXNClockFormatter(amPmShown.toPattern()))
-				setObjectField(formatters, "clockTextAmPmGone", PXNClockFormatter(amPmGone.toPattern()))
-			}
-			isJetpackClock = hooks.isNotEmpty()
-		} catch (t: Throwable) {
-			log("ClockInteractor not found, skipping Android 17 Compose hook.")
 		}
+		isJetpackClock = hasComposeClock
 		ClockClass
 			.before("getSmallTime")
 			.run { param ->
@@ -978,6 +992,10 @@ class StatusbarMods @SuppressLint("DiscouragedApi") constructor(context: Context
 		if (mClockView == null) return
 
 		currentClockColor = mClockView!!.textColors.defaultColor
+
+		// Keep the TextViews on the same light/dark colour as compose clock
+		mBeforeClockView?.setTextColor(currentClockColor)
+		mAfterClockView?.setTextColor(currentClockColor)
 
 		for (callback in mTextColorCallbacks) {
 			callback.onTextColorChanged(currentClockColor)
@@ -1369,6 +1387,127 @@ class StatusbarMods @SuppressLint("DiscouragedApi") constructor(context: Context
 	//endregion
 
 	//region clock and date related
+	/**
+	 * The status-bar clock text size, in px. The Compose clock and the legacy
+	 * Clock TextView share the same metric. Falls back to dimension.
+	 */
+	private fun companionTextSizePx(): Float {
+		val fromClock = mClockView?.textSize ?: 0f
+		if (fromClock > 0f) return fromClock
+
+		val fromDimen = try {
+			mContext.resources.getDimensionPixelSize(SystemUtils.dimenIdOf("status_bar_clock_size")).toFloat()
+		} catch (t: Throwable) {
+			0f
+		}
+		return if (fromDimen > 0f) fromDimen else 42f
+	}
+
+	// One flanking TextView. Height is MATCH_PARENT with CENTER_VERTICAL, like the Compose clock
+	private fun makeCompanionView(): TextView {
+		val sizePx = companionTextSizePx()
+		return TextView(mContext).apply {
+			setSingleLine(true)
+			gravity = Gravity.CENTER_VERTICAL
+			includeFontPadding = false
+			setPadding(0, 0, 0, 0)
+			setTextSize(TypedValue.COMPLEX_UNIT_PX, sizePx)
+			mClockView?.typeface?.let { typeface = it }
+			setTextColor(currentClockColor)
+			layoutParams = LinearLayout.LayoutParams(
+				ViewGroup.LayoutParams.WRAP_CONTENT,
+				ViewGroup.LayoutParams.MATCH_PARENT,
+			).apply { gravity = Gravity.CENTER_VERTICAL }
+		}
+	}
+
+	/**
+	 * Re-parents the Compose clock into a horizontal container with
+	 * [mBeforeClockView] and [mAfterClockView]. Returns the container, which
+	 * is what [placeClock] moves.
+	 */
+	private fun ensureClockContainer(clock: View): LinearLayout {
+		val existing = mClockContainer
+		if (existing != null && clock.parent === existing && existing.parent != null) {
+			return existing
+		}
+
+		// Drop any previous container so it does not linger in the bar.
+		(existing?.parent as? ViewGroup)?.removeView(existing)
+
+		val container = LinearLayout(mContext).apply {
+			orientation = LinearLayout.HORIZONTAL
+			gravity = Gravity.CENTER_VERTICAL
+			clipChildren = false
+			clipToPadding = false
+		}
+
+		val before = makeCompanionView()
+		val after = makeCompanionView()
+
+		container.addView(before)
+
+		// AbstractComposeView hook in onPackageLoaded watches isMovingClock.
+		isMovingClock = true
+		try {
+			(clock.parent as? ViewGroup)?.removeView(clock)
+			clock.layoutParams = LinearLayout.LayoutParams(
+				ViewGroup.LayoutParams.WRAP_CONTENT,
+				ViewGroup.LayoutParams.MATCH_PARENT,
+			).apply { gravity = Gravity.CENTER_VERTICAL }
+			container.addView(clock)
+		} finally {
+			isMovingClock = false
+		}
+
+		container.addView(after)
+
+		mClockContainer = container
+		mBeforeClockView = before
+		mAfterClockView = after
+
+		registerCompanionFormatCallback()
+		updateClockCompanionViews()
+		return container
+	}
+
+	private fun registerCompanionFormatCallback() {
+		if (mCompanionFormatCallback != null) return
+		val callback = object : FormattedStringCallback {
+			override fun onRefreshNeeded() {
+				runOnMainThread { updateClockCompanionViews() }
+			}
+		}
+		stringFormatter.registerCallback(callback)
+		mCompanionFormatCallback = callback
+	}
+
+	// Recomputes the before/after strings (variables resolved by [StringFormatter])
+	// AM/PM belongs to the after view
+	private fun updateClockCompanionViews() {
+		val before = mBeforeClockView
+		val after = mAfterClockView
+		if (before == null || after == null) return
+
+		// the text always carries the zero-width pad and is never empty.
+		val beforeContent = getFormattedString(mStringFormatBefore, mBeforeSmall, mBeforeClockColor)
+		before.text = fullHeightLineBox(beforeContent)
+		before.setTextColor(currentClockColor)
+
+		val afterText = SpannableStringBuilder()
+		if (mAmPmStyle != AM_PM_STYLE_GONE) {
+			// No separator: the marker sits flush against the time ("3:04PM").
+			afterText.append(getFormattedString("\$Ga", mAmPmStyle == AM_PM_STYLE_SMALL, clockColor))
+		}
+		afterText.append(getFormattedString(mStringFormatAfter, mAfterSmall, mAfterClockColor))
+		after.text = fullHeightLineBox(afterText)
+		after.setTextColor(currentClockColor)
+
+		// Also hide when SystemUI hides the clock itself
+		before.visibility = if (mStatusBarClockVisible && beforeContent.isNotEmpty()) View.VISIBLE else View.GONE
+		after.visibility = if (mStatusBarClockVisible && afterText.isNotEmpty()) View.VISIBLE else View.GONE
+	}
+
 	private fun placeClock() {
 		var viewToMove: View? = mClockView
 		if (isJetpackClock) {
@@ -1381,10 +1520,10 @@ class StatusbarMods @SuppressLint("DiscouragedApi") constructor(context: Context
 				// We don't search the right side to avoid accidentally matching the battery ComposeView.
 				mJetpackClockView = findComposeView(mStatusbarStartSide)
 			}
-			if (mJetpackClockView != null) {
-				viewToMove = mJetpackClockView
-			}
+			// Move the container rather than the bare clock
+			viewToMove = mJetpackClockView?.let { ensureClockContainer(it) }
 		}
+		if (viewToMove == null) return
 
 		val parent = viewToMove!!.parent as ViewGroup?
 		var targetArea: ViewGroup? = null
@@ -1414,20 +1553,17 @@ class StatusbarMods @SuppressLint("DiscouragedApi") constructor(context: Context
 
 		if (targetArea == null || targetArea == parent) return
 
-		if (isJetpackClock) {
-			isMovingClock = true
-		}
+		// Moving the container detaches its Compose child from the window
+		// isMovingClock is the flag the AbstractComposeView hook watches to stop that.
+		val movingCompose = viewToMove == mClockContainer
+		if (movingCompose) isMovingClock = true
 		try {
 			if (parent != null) parent.removeView(viewToMove!!)
 
-			if (isJetpackClock && viewToMove == mJetpackClockView) {
-				val lp = viewToMove!!.layoutParams
-				if (lp != null) {
-					lp.width = if (clockPosition == POSITION_RIGHT) {
-						ViewGroup.LayoutParams.WRAP_CONTENT
-					} else {
-						ViewGroup.LayoutParams.MATCH_PARENT
-					}
+			if (movingCompose) {
+				(viewToMove!!.layoutParams as? LinearLayout.LayoutParams)?.let { lp ->
+					lp.width = ViewGroup.LayoutParams.WRAP_CONTENT
+					lp.height = ViewGroup.LayoutParams.MATCH_PARENT
 					viewToMove!!.layoutParams = lp
 				}
 			}
@@ -1438,11 +1574,23 @@ class StatusbarMods @SuppressLint("DiscouragedApi") constructor(context: Context
 				targetArea.addView(viewToMove!!)
 			}
 		} finally {
-			isMovingClock = false
+			if (movingCompose) isMovingClock = false
 		}
 	}
 
+	/**
+	 * Returns [o] if it is SystemUI's `StatusBarDisableFlagsVisibilityModel`,
+	 * else null. Picks the model out of either shape of the isClockVisible
+	 * combine without depending on argument order.
+	 */
+	private fun asDisableFlagsVisibilityModel(o: Any?): Any? =
+		if (o != null && o.javaClass.name.endsWith("StatusBarDisableFlagsVisibilityModel")) o else null
+
 	private val stringFormatter = StringFormatter()
+
+	// Pads [content] with a zero-width space at the TextView's own (full) size.
+	private fun fullHeightLineBox(content: CharSequence): CharSequence =
+		SpannableStringBuilder(ZERO_WIDTH_SPACE).append(content)
 
 	private fun getFormattedString(dateFormat: String, small: Boolean, @Nullable @ColorInt textColor: Int?): CharSequence {
 		if (dateFormat.isEmpty()) return ""
