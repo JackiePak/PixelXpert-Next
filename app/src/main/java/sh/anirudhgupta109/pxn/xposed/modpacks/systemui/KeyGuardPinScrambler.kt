@@ -86,7 +86,13 @@ class KeyGuardPinScrambler(context: Context) : XposedModPack(context) {
 						override fun beforeHookedMethod(param: MethodHookParam) {
 							if (!shufflePinEnabled) return
 
-							if (param.args != null && param.args.size > 0 && param.args[0] is Int) {
+							if (param.args != null && param.args.size > 2 && param.args[0] is Int) {
+								// Only the keyguard bouncer's own pad is shuffled.
+								val onClick = param.args[2]
+								if (onClick == null || !onClick.javaClass.name.contains("PinBouncerKt")) {
+									return
+								}
+
 								val original = param.args[0] as Int
 
 								// Fix R8 bytecode hardcoding: button 0's onClick lambda usually has $r8$classId == 1
