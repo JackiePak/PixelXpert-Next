@@ -229,6 +229,16 @@ class StatusbarMods @SuppressLint("DiscouragedApi") constructor(context: Context
 	private var mCompanionFormatCallback: FormattedStringCallback? = null
 	// Mirrors SystemUI's own clock visibility
 	private var mStatusBarClockVisible = true
+
+	// Schedule own refresh since compose clock can't handle it
+	private var mCompanionTickScheduled = false
+	private val mCompanionTick = object : Runnable {
+		override fun run() {
+			mCompanionTickScheduled = false
+			updateClockCompanionViews()
+			scheduleCompanionTick()
+		}
+	}
 	//endregion
 
 	init {
@@ -564,13 +574,19 @@ class StatusbarMods @SuppressLint("DiscouragedApi") constructor(context: Context
 	}
 
 	private fun updateClock() {
+		if (isJetpackClock) {
+			// Only the companion views need refreshing, ClockKt handles itself
+			runOnMainThread {
+				updateClockCompanionViews()
+				scheduleCompanionTick(restart = true)
+			}
+			return
+		}
 		try {
 			mClockView!!.post { //the builtin update method doesn't care about the format. Just the text sadly
 				callMethod(getObjectField(mClockView, "mCalendar"), "setTimeInMillis", System.currentTimeMillis())
 
 				mClockView!!.text = callMethod(mClockView, "getSmallTime") as CharSequence
-				// The Compose clock repaints itself; refresh TextViews on every tick.
-				updateClockCompanionViews()
 			}
 		} catch (ignored: Throwable) {
 		}
@@ -920,6 +936,9 @@ class StatusbarMods @SuppressLint("DiscouragedApi") constructor(context: Context
 		ClockClass
 			.before("getSmallTime")
 			.run { param ->
+				// leave the legacy one with SystemUI's own (time-only) text on compose clock
+				if (isJetpackClock) return@run
+
 				setObjectField(param.thisObject, "mAmPmStyle", AM_PM_STYLE_GONE)
 				setObjectField(param.thisObject, "mShowSeconds", mShowSeconds)
 			}
@@ -929,6 +948,7 @@ class StatusbarMods @SuppressLint("DiscouragedApi") constructor(context: Context
 			.run { param ->
 				if (param.thisObject != mClockView)
 					return@run //We don't want custom format in QS header. do we?
+				if (isJetpackClock) return@run
 
 				val result = SpannableStringBuilder()
 				result.append(getFormattedString(mStringFormatBefore, mBeforeSmall, mBeforeClockColor)) //before clock
@@ -1485,7 +1505,26 @@ class StatusbarMods @SuppressLint("DiscouragedApi") constructor(context: Context
 
 		registerCompanionFormatCallback()
 		updateClockCompanionViews()
+		scheduleCompanionTick()
 		return container
+	}
+
+	/**
+	 * wake up just after each flip: every second when seconds are shown, otherwise every minute.
+	 *
+	 * [restart] drops the pending wake up and re-anchors it to [now], which a preference
+	 * change needs since it may have just changed how long a period is.
+	 */
+	private fun scheduleCompanionTick(restart: Boolean = false) {
+		if (!isJetpackClock) return
+		if (mCompanionTickScheduled) {
+			if (!restart) return
+			mainHandler.removeCallbacks(mCompanionTick)
+		}
+
+		mCompanionTickScheduled = true
+		val period = if (mShowSeconds) 1000L else 60_000L
+		mainHandler.postDelayed(mCompanionTick, period - System.currentTimeMillis() % period + 100L)
 	}
 
 	private fun registerCompanionFormatCallback() {
