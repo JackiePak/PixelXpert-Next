@@ -2,6 +2,14 @@ package sh.anirudhgupta109.pxn.ui.nav
 
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.ContentTransform
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.animation.togetherWith
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -35,6 +43,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
@@ -48,6 +57,8 @@ import org.koin.compose.koinInject
 import sh.anirudhgupta109.pxn.BuildConfig
 import sh.anirudhgupta109.pxn.R
 import sh.anirudhgupta109.pxn.data.PrefStore
+import sh.anirudhgupta109.pxn.theme.LocalPxnMotionScheme
+import sh.anirudhgupta109.pxn.theme.PxnMotionScheme
 import sh.anirudhgupta109.pxn.ui.debug.HookAuditScreen
 import sh.anirudhgupta109.pxn.ui.prefs.PrefScreenContent
 import sh.anirudhgupta109.pxn.ui.prefs.PullDownIndicator
@@ -301,6 +312,10 @@ fun PxnNav(startRoute: Route? = null) {
 	// rememberNavBackStack is NOT generic: it returns NavBackStack<NavKey>.
 	val backStack = rememberNavBackStack(Route.Home)
 
+	// Destination movement comes from the theme's motion scheme
+	val motion = LocalPxnMotionScheme.current
+	val slideDistance = with(LocalDensity.current) { SharedAxisSlideDistance.roundToPx() }
+
 	fun pushTarget(target: NavKey) {
 		if (backStack.lastOrNull() != target) backStack.add(target)
 	}
@@ -465,52 +480,66 @@ fun PxnNav(startRoute: Route? = null) {
 			backStack = backStack,
 			modifier = Modifier.padding(innerPadding),
 			onBack = ::pop,
+			transitionSpec = { motion.sharedAxisX(forward = true, slideDistance = slideDistance) },
+			popTransitionSpec = { motion.sharedAxisX(forward = false, slideDistance = slideDistance) },
+			// The gesture sets the same geometry as a settled back
+			predictivePopTransitionSpec = {
+				motion.sharedAxisX(forward = false, slideDistance = slideDistance)
+			},
 			// The builder lambda takes no explicit parameter - `this` is the
 			// EntryProviderScope. Dispatch happens via the reified `entry<K>`,
 			// which matches on the key's runtime class.
 			entryProvider = entryProvider<NavKey> {
 				entry<Route.Home> {
-					PrefScreenContent(
-						screen = header_preferences,
-						store = store,
-						onNavigate = ::push,
-						onSearch = { pushTarget(Route.Search) },
-					)
-				}
-				entry<Route.Pref> { key ->
-					val screen = preferenceScreens[key.screenKey]
-					if (screen != null) {
+					NavScene {
 						PrefScreenContent(
-							screen = screen,
+							screen = header_preferences,
 							store = store,
 							onNavigate = ::push,
 							onSearch = { pushTarget(Route.Search) },
 						)
-					} else {
-						MissingScreen(key.screenKey)
 					}
 				}
-				entry<Route.Unported> { key -> MissingScreen(key.route) }
-				entry<Route.IconPack> { IconPackScreen() }
+				entry<Route.Pref> { key ->
+					val screen = preferenceScreens[key.screenKey]
+					NavScene {
+						if (screen != null) {
+							PrefScreenContent(
+								screen = screen,
+								store = store,
+								onNavigate = ::push,
+								onSearch = { pushTarget(Route.Search) },
+							)
+						} else {
+							MissingScreen(key.screenKey)
+						}
+					}
+				}
+				entry<Route.Unported> { key -> NavScene { MissingScreen(key.route) } }
+				entry<Route.IconPack> { NavScene { IconPackScreen() } }
 				entry<Route.Search> {
-					SearchScreen(
-						store = store,
-						onOpenResult = { result ->
-							pushTarget(Route.Pref(result.screenKey, result.screenTitle))
-						},
-					)
+					NavScene {
+						SearchScreen(
+							store = store,
+							onOpenResult = { result ->
+								pushTarget(Route.Pref(result.screenKey, result.screenTitle))
+							},
+						)
+					}
 				}
-				entry<Route.Update> { UpdateScreen(store = store) }
-				entry<Route.Hooks> { HooksScreen(store = store) }
+				entry<Route.Update> { NavScene { UpdateScreen(store = store) } }
+				entry<Route.Hooks> { NavScene { HooksScreen(store = store) } }
 				entry<Route.Settings> {
-					PrefScreenContent(
-						screen = own_prefs_header,
-						store = store,
-						onNavigate = ::push,
-						onSearch = { pushTarget(Route.Search) },
-					)
+					NavScene {
+						PrefScreenContent(
+							screen = own_prefs_header,
+							store = store,
+							onNavigate = ::push,
+							onSearch = { pushTarget(Route.Search) },
+						)
+					}
 				}
-				entry<Route.HookAudit> { HookAuditScreen() }
+				entry<Route.HookAudit> { NavScene { HookAuditScreen() } }
 			},
 		)
 	}
@@ -531,4 +560,49 @@ private fun MissingScreen(id: String) {
 			textAlign = TextAlign.Center,
 		)
 	}
+}
+
+// Paints the window colour behind a destination.
+@Composable
+private fun NavScene(content: @Composable () -> Unit) {
+	Box(
+		modifier = Modifier
+			.fillMaxSize()
+			.background(MaterialTheme.colorScheme.background),
+	) {
+		content()
+	}
+}
+
+// Kinetic distance a destination travels during a transition
+private val SharedAxisSlideDistance = 96.dp
+
+// Share of the transition the outgoing destination fades out over
+private const val OutgoingFadeFraction = 0.35f
+
+// Shared X-axis transition
+// the two destinations cross-fade while sliding a short distance along X
+private fun PxnMotionScheme.sharedAxisX(
+	forward: Boolean,
+	slideDistance: Int,
+): ContentTransform {
+	// Fading the outgoing destination over the first [OutgoingFadeFraction]
+	val outgoingMillis = (spatialMillis * OutgoingFadeFraction).toInt()
+	val incomingMillis = spatialMillis - outgoingMillis
+
+	return (
+		slideInHorizontally(
+			animationSpec = tween(spatialMillis, easing = spatialEasing),
+			initialOffsetX = { if (forward) slideDistance else -slideDistance },
+		) + fadeIn(
+			animationSpec = tween(incomingMillis, delayMillis = outgoingMillis, easing = effectsEasing),
+		)
+	) togetherWith (
+		slideOutHorizontally(
+			animationSpec = tween(spatialMillis, easing = spatialEasing),
+			targetOffsetX = { if (forward) -slideDistance else slideDistance },
+		) + fadeOut(
+			animationSpec = tween(outgoingMillis, easing = effectsEasing),
+		)
+	)
 }
