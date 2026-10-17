@@ -1,3 +1,7 @@
+**canary-532**  
+- Only customize the clock on Compose clock builds + keep companions ticking  
+- investigator: Add the preference store to the markdown report  
+  
 **canary-531**  
 - Give the flanking clock text the clock's font weight  
 - Wrap Compose clock in a container with flanking text views + fix compose clock check  
