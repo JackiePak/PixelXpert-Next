@@ -4,6 +4,10 @@
     <string name="app_themed_icon_title">其他主题图标</string>
     <string name="xposed_desc">自定义 Google Pixel 设备</string>
     <string name="volume_tile_title">媒体音量</string>
+    <string name="caffeine_tile_title">Caffeine</string>
+    <string name="high_brightness_flashlight_tile_title">High Brightness Flashlight</string>
+    <string name="enable_high_brightness_flashlight_title">High Brightness Flashlight</string>
+    <string name="enable_high_brightness_flashlight_summary">Utilizes camera to reach higher brightness than what the system allows. Uses more power!</string>
     <string name="app_switch_tile_title">Switch App Profile</string>
     <string name="hide_default">隐藏 (默认)</string>
     <string name="percent_of_default_size">% 默认</string>
@@ -97,6 +101,8 @@
     <string name="easy_unlock_summary">如果第一次未生效，请重试</string>
     <string name="charging_info_title">锁屏显示充电信息</string>
     <string name="disable_lockscreen_pill_title">不显示 “自定义锁屏”胶囊</string>
+    <string name="block_qs_power_on_lockscreen_title">Block sensitive QS tiles &amp; power menu</string>
+    <string name="block_qs_power_on_lockscreen_summary">Prevents toggling network tiles and opening the power menu while the device is locked</string>
     <string name="imperial_units_title">使用英制单位</string>
     <!--Status bar related-->
     <string name="double_tap_sleep_title">双击息屏</string>
@@ -362,6 +368,7 @@
     <string name="pull_down_right">右侧</string>
     <!-- Battery styles -->
     <string name="word_default">默认</string>
+    <string name="reset_to_default">Reset to default</string>
     <!-- Clock position -->
     <string name="clock_default">左侧 (默认)</string>
     <string name="clock_center">中间</string>
@@ -398,7 +405,7 @@
     <string name="depth_effect_alert_body">使用合适的锁屏壁纸，让前台元素不会阻挡您锁屏上的整个时钟， 确保您锁屏界面的视觉吸引力和功能清晰度。\n\n注：%s.</string>
     <string name="depth_effect_ok_btn">确定</string>
     <!-- Reboot alert -->
-    <string name="pending_actions"></string>
+    <string name="pending_actions">Pending actions</string>
     <string name="btn_dismiss">Dismiss</string>
     <!-- Menu Items -->
     <string name="menu_settings_title">导入/导出</string>
@@ -427,6 +434,8 @@
     <string name="update_type_title">更新包类型</string>
     <string name="currentVersionTitle">已安装版本: </string>
     <string name="lastestVersionTitle">最新版本: </string>
+    <string name="update_source_title">Update source</string>
+    <string name="update_source_hint">Update JSON URL</string>
     <string name="root_not_here">未获得 ROOT 权限!</string>
     <string name="reboot_pending">稍后重启</string>
     <string name="reboot_word">现在重启</string>
@@ -487,6 +496,9 @@
     <string name="connecting_root_service">正在连接 root 服务…</string>
     <string name="root_access_denied">root 访问被拒绝。请允许 root 访问。</string>
     <string name="root_service_failed">无法连接服务器，请稍后再试</string>
+    <string name="checking_pixel_device">Verifying Pixel device…</string>
+    <string name="pixel_not_supported">This device is not a supported Pixel. PixelXpert requires a Pixel phone running a Pixel ROM.</string>
+    <string name="pixel_not_supported_debug">Pixel check failed: %1$s</string>
     <string name="exit">Exit</string>
     <!-- Bottom Navigation -->
     <string name="navigation_home">首页</string>
@@ -536,4 +548,21 @@
     <string name="restart_now">立即重启</string>
     <string name="watts">Watts</string>
     <string name="fast_charging_threshold_title">Fast charging threshold</string>
+    <string name="sb_multi_row_clock_bottom">Move clock to bottom row</string>
+    <string name="pin_wireless_adb_title">Pin Wireless ADB Port</string>
+    <string name="pin_wireless_adb_summary">Forward a specific static port to the randomized Wireless Debugging TLS port, allowing easy connections like \"adb connect ip:port\"</string>
+    <string name="pinned_adb_port_title">Pinned ADB Port</string>
+    <string name="pinned_adb_port_summary">The static port to listen on (default 5555)</string>
+    <string name="qs_brightness_slider_bottom_title">Brightness Slider Below Tiles</string>
+    <string name="qs_brightness_slider_bottom_desc">Move the brightness slider below the quick settings tiles</string>
+    <string name="qqs_brightness_slider_title">Always Show Brightness Slider</string>
+    <string name="qqs_brightness_slider_desc">Show the brightness slider in collapsed quick settings and share it with expanded quick settings</string>
+    <!--Hook Audit Screen-->
+    <string name="hook_audit_title">Hook Audit &amp; Diagnostics</string>
+    <string name="hook_audit_export">Export Report</string>
+    <string name="hook_audit_copy">Copy Markdown</string>
+    <string name="hook_audit_refresh">Refresh Audit</string>
+    <string name="hook_audit_copied">Report copied to clipboard</string>
+    <string name="hook_audit_waiting">Waiting for hooked processes to reply…</string>
+    <string name="hook_audit_waiting_desc">Ensure the module is enabled in LSPosed, target apps are selected in scope, and they have been restarted. Tap Refresh to request audit. A SystemUI restart might be needed!</string>
 </resources>

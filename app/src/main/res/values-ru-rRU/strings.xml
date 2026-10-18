@@ -4,6 +4,10 @@
     <string name="app_themed_icon_title">Включение альтернативной иконки </string>
     <string name="xposed_desc">Настройки для устройств Google Pixel</string>
     <string name="volume_tile_title">Громкость мультимедиа </string>
+    <string name="caffeine_tile_title">Caffeine</string>
+    <string name="high_brightness_flashlight_tile_title">High Brightness Flashlight</string>
+    <string name="enable_high_brightness_flashlight_title">High Brightness Flashlight</string>
+    <string name="enable_high_brightness_flashlight_summary">Utilizes camera to reach higher brightness than what the system allows. Uses more power!</string>
     <string name="app_switch_tile_title">Сменить профиль приложения</string>
     <string name="hide_default">Скрыть (по умолчанию)</string>
     <string name="percent_of_default_size">% от стандартного размера</string>
@@ -97,6 +101,8 @@
     <string name="easy_unlock_summary">Если не получилось в первый раз, попробуйте еще раз</string>
     <string name="charging_info_title">Информация о зарядке на экране блокировки</string>
     <string name="disable_lockscreen_pill_title">Не показывать кнопку «Настройки заблокированного экрана»</string>
+    <string name="block_qs_power_on_lockscreen_title">Block sensitive QS tiles &amp; power menu</string>
+    <string name="block_qs_power_on_lockscreen_summary">Prevents toggling network tiles and opening the power menu while the device is locked</string>
     <string name="imperial_units_title">Использовать британские единицы измерения</string>
     <!--Status bar related-->
     <string name="double_tap_sleep_title">Двойное нажатие для перехода в спящий режим</string>
@@ -362,6 +368,7 @@
     <string name="pull_down_right">Справа</string>
     <!-- Battery styles -->
     <string name="word_default">По умолчанию</string>
+    <string name="reset_to_default">Reset to default</string>
     <!-- Clock position -->
     <string name="clock_default">Слева (по умолчанию)</string>
     <string name="clock_center">По центру</string>
@@ -427,6 +434,8 @@
     <string name="update_type_title">Тип модуля</string>
     <string name="currentVersionTitle">Установленная версия: </string>
     <string name="lastestVersionTitle">Последняя версия: </string>
+    <string name="update_source_title">Update source</string>
+    <string name="update_source_hint">Update JSON URL</string>
     <string name="root_not_here">ДОСТУП ROOT НЕ ПРЕДОСТАВЛЕН!</string>
     <string name="reboot_pending">Ожидается перезагрузка</string>
     <string name="reboot_word">Перезагрузите устройство сейчас</string>
@@ -487,6 +496,9 @@
     <string name="connecting_root_service">Подключение к корневому сервису…</string>
     <string name="root_access_denied">Рут доступ запрещен. Пожалуйста, предоставьте права суперпользователя.</string>
     <string name="root_service_failed">Не удалось соединиться с root сервисом. Пожалуйста, попробуйте позже.</string>
+    <string name="checking_pixel_device">Verifying Pixel device…</string>
+    <string name="pixel_not_supported">This device is not a supported Pixel. PixelXpert requires a Pixel phone running a Pixel ROM.</string>
+    <string name="pixel_not_supported_debug">Pixel check failed: %1$s</string>
     <string name="exit">Выход</string>
     <!-- Bottom Navigation -->
     <string name="navigation_home">Главная</string>
@@ -536,4 +548,21 @@
     <string name="restart_now">Перезагрузить сейчас</string>
     <string name="watts">Ваты</string>
     <string name="fast_charging_threshold_title">Порог быстрой зарядки</string>
+    <string name="sb_multi_row_clock_bottom">Move clock to bottom row</string>
+    <string name="pin_wireless_adb_title">Pin Wireless ADB Port</string>
+    <string name="pin_wireless_adb_summary">Forward a specific static port to the randomized Wireless Debugging TLS port, allowing easy connections like \"adb connect ip:port\"</string>
+    <string name="pinned_adb_port_title">Pinned ADB Port</string>
+    <string name="pinned_adb_port_summary">The static port to listen on (default 5555)</string>
+    <string name="qs_brightness_slider_bottom_title">Brightness Slider Below Tiles</string>
+    <string name="qs_brightness_slider_bottom_desc">Move the brightness slider below the quick settings tiles</string>
+    <string name="qqs_brightness_slider_title">Always Show Brightness Slider</string>
+    <string name="qqs_brightness_slider_desc">Show the brightness slider in collapsed quick settings and share it with expanded quick settings</string>
+    <!--Hook Audit Screen-->
+    <string name="hook_audit_title">Hook Audit &amp; Diagnostics</string>
+    <string name="hook_audit_export">Export Report</string>
+    <string name="hook_audit_copy">Copy Markdown</string>
+    <string name="hook_audit_refresh">Refresh Audit</string>
+    <string name="hook_audit_copied">Report copied to clipboard</string>
+    <string name="hook_audit_waiting">Waiting for hooked processes to reply…</string>
+    <string name="hook_audit_waiting_desc">Ensure the module is enabled in LSPosed, target apps are selected in scope, and they have been restarted. Tap Refresh to request audit. A SystemUI restart might be needed!</string>
 </resources>

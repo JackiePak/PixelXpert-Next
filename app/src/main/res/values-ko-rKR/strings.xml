@@ -4,6 +4,10 @@
     <string name="app_themed_icon_title">AOSP Mods 테마의 대체 아이콘 활성화</string>
     <string name="xposed_desc">구글 픽셀용 커스텀마이징</string>
     <string name="volume_tile_title">미디어 볼륨</string>
+    <string name="caffeine_tile_title">Caffeine</string>
+    <string name="high_brightness_flashlight_tile_title">High Brightness Flashlight</string>
+    <string name="enable_high_brightness_flashlight_title">High Brightness Flashlight</string>
+    <string name="enable_high_brightness_flashlight_summary">Utilizes camera to reach higher brightness than what the system allows. Uses more power!</string>
     <string name="app_switch_tile_title">앱 프로필 바꾸기</string>
     <string name="hide_default">숨김 (기본값)</string>
     <string name="percent_of_default_size">% (기본값 대비)</string>
@@ -97,6 +101,8 @@
     <string name="easy_unlock_summary">적용 직후, 작동하지 않았다면 다시 시도해보세요</string>
     <string name="charging_info_title">잠금 화면 충전 정보 표시</string>
     <string name="disable_lockscreen_pill_title">\"잠금 화면 맞춤 설정\" 버튼 표시 안 함</string>
+    <string name="block_qs_power_on_lockscreen_title">Block sensitive QS tiles &amp; power menu</string>
+    <string name="block_qs_power_on_lockscreen_summary">Prevents toggling network tiles and opening the power menu while the device is locked</string>
     <string name="imperial_units_title">야드파운드 표시법 사용</string>
     <!--Status bar related-->
     <string name="double_tap_sleep_title">두 번 눌러 화면 끄기</string>
@@ -362,6 +368,7 @@
     <string name="pull_down_right">오른쪽</string>
     <!-- Battery styles -->
     <string name="word_default">기본</string>
+    <string name="reset_to_default">Reset to default</string>
     <!-- Clock position -->
     <string name="clock_default">왼쪽 (기본)</string>
     <string name="clock_center">가운데</string>
@@ -427,6 +434,8 @@
     <string name="update_type_title">패키지 타입</string>
     <string name="currentVersionTitle">설치된 버전: </string>
     <string name="lastestVersionTitle">최신 버전: </string>
+    <string name="update_source_title">Update source</string>
+    <string name="update_source_hint">Update JSON URL</string>
     <string name="root_not_here">ROOT 권한이 부여되지 않았습니다!</string>
     <string name="reboot_pending">다시 시작 대기 중</string>
     <string name="reboot_word">지금 다시 시작</string>
@@ -487,6 +496,9 @@
     <string name="connecting_root_service">루트 서비스에 연결 중…</string>
     <string name="root_access_denied">루트 액세스가 거부되었습니다. 루트 액세스를 허용해 주세요.</string>
     <string name="root_service_failed">Unable to connect to root services. Please try again later</string>
+    <string name="checking_pixel_device">Verifying Pixel device…</string>
+    <string name="pixel_not_supported">This device is not a supported Pixel. PixelXpert requires a Pixel phone running a Pixel ROM.</string>
+    <string name="pixel_not_supported_debug">Pixel check failed: %1$s</string>
     <string name="exit">출구</string>
     <!-- Bottom Navigation -->
     <string name="navigation_home">홈</string>
@@ -536,4 +548,21 @@
     <string name="restart_now">Reboot now</string>
     <string name="watts">Watts</string>
     <string name="fast_charging_threshold_title">Fast charging threshold</string>
+    <string name="sb_multi_row_clock_bottom">Move clock to bottom row</string>
+    <string name="pin_wireless_adb_title">Pin Wireless ADB Port</string>
+    <string name="pin_wireless_adb_summary">Forward a specific static port to the randomized Wireless Debugging TLS port, allowing easy connections like \"adb connect ip:port\"</string>
+    <string name="pinned_adb_port_title">Pinned ADB Port</string>
+    <string name="pinned_adb_port_summary">The static port to listen on (default 5555)</string>
+    <string name="qs_brightness_slider_bottom_title">Brightness Slider Below Tiles</string>
+    <string name="qs_brightness_slider_bottom_desc">Move the brightness slider below the quick settings tiles</string>
+    <string name="qqs_brightness_slider_title">Always Show Brightness Slider</string>
+    <string name="qqs_brightness_slider_desc">Show the brightness slider in collapsed quick settings and share it with expanded quick settings</string>
+    <!--Hook Audit Screen-->
+    <string name="hook_audit_title">Hook Audit &amp; Diagnostics</string>
+    <string name="hook_audit_export">Export Report</string>
+    <string name="hook_audit_copy">Copy Markdown</string>
+    <string name="hook_audit_refresh">Refresh Audit</string>
+    <string name="hook_audit_copied">Report copied to clipboard</string>
+    <string name="hook_audit_waiting">Waiting for hooked processes to reply…</string>
+    <string name="hook_audit_waiting_desc">Ensure the module is enabled in LSPosed, target apps are selected in scope, and they have been restarted. Tap Refresh to request audit. A SystemUI restart might be needed!</string>
 </resources>
