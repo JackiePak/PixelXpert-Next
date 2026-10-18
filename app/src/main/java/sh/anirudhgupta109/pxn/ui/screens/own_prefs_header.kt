@@ -13,6 +13,7 @@ val own_prefs_header: PrefScreen = PrefScreen(
 	children = listOf(
 				ListPref(key = "appLanguage", title = R.string.language_title, icon = R.drawable.ic_language, entries = R.array.languages_names, entryValues = R.array.languages_values),
 				SwitchPref(key = "AlternativeThemedAppIcon", title = R.string.app_themed_icon_title, default = "false", icon = R.drawable.ic_alternative_icon, summaryOn = R.string.general_on, summaryOff = R.string.general_off),
+				SwitchPref(key = "GoogleSettingsDesign", title = R.string.google_settings_design_title, summary = R.string.google_settings_design_summary, default = "false", icon = R.drawable.ic_settings_themes),
 	),
 			),
 			Category(

@@ -72,11 +72,16 @@ data class SearchBar(
 	override val ignore: Boolean = false,
 ) : PrefNode
 
-/** Grouping header; [title] of 0 renders an untitled gap. */
+/**
+ * Grouping header; [title] of 0 renders an untitled gap.
+ *
+ * The Google design paints the icons of a group in it, every row of a category has one colour
+ */
 data class Category(
 	override val title: Int = 0,
 	override val titleText: String? = null,
 	val children: List<PrefNode>,
+	val accent: Long = 0,
 	override val ignore: Boolean = false,
 ) : PrefNode
 

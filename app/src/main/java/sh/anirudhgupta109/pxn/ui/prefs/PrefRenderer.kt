@@ -3,6 +3,7 @@ package sh.anirudhgupta109.pxn.ui.prefs
 import android.content.Context
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.DragInteraction
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -30,6 +31,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -64,6 +66,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.layout.Layout
@@ -134,6 +137,9 @@ fun PrefScreenContent(
 	// Tiles that sit beside each other share a bubble
 	val blocks = rows.toBlocks()
 
+	// Whether the home screen uses Google design.
+	val googleDesign = store.getBoolean("GoogleSettingsDesign", false)
+
 	LazyColumn(
 		modifier = modifier.fillMaxSize(),
 		contentPadding = PaddingValues(bottom = 32.dp),
@@ -149,9 +155,15 @@ fun PrefScreenContent(
 					store = store,
 					onNavigate = onNavigate,
 					onSearch = onSearch,
+					googleDesign = googleDesign,
 				)
 
-				is PrefBlock.Tiles -> TileBubble(block.tiles, onNavigate)
+				is PrefBlock.Tiles -> TileBubble(
+					tiles = block.tiles,
+					accent = block.accent,
+					googleDesign = googleDesign,
+					onNavigate = onNavigate,
+				)
 			}
 		}
 	}
@@ -160,15 +172,18 @@ fun PrefScreenContent(
 // One entry of the rendered list (either a single node, or the run of tiles)
 private sealed interface PrefBlock {
 	data class Row(val item: FlattenedNode) : PrefBlock
-	data class Tiles(val tiles: List<MainTile>) : PrefBlock
+	data class Tiles(val tiles: List<MainTile>, val accent: Long) : PrefBlock
 }
 
 // Each run of consecutive [MainTile]s into a [PrefBlock.Tiles].
 private fun List<FlattenedNode>.toBlocks(): List<PrefBlock> {
 	val blocks = ArrayList<PrefBlock>(size)
+	// A tile's category carries the same accent
+	var accent = 0L
 	var i = 0
 	while (i < size) {
 		val node = this[i].node
+		if (node is Category) accent = node.accent
 		if (node !is MainTile) {
 			blocks += PrefBlock.Row(this[i])
 			i++
@@ -179,7 +194,7 @@ private fun List<FlattenedNode>.toBlocks(): List<PrefBlock> {
 			tiles += this[i].node as MainTile
 			i++
 		}
-		blocks += PrefBlock.Tiles(tiles)
+		blocks += PrefBlock.Tiles(tiles, accent)
 	}
 	return blocks
 }
@@ -235,15 +250,16 @@ private fun PrefNodeRow(
 	store: PrefStore,
 	onNavigate: (route: String, title: Int) -> Unit,
 	onSearch: () -> Unit,
+	googleDesign: Boolean,
 ) {
 	when (node) {
 		is Illustration -> IllustrationHeader(node)
 		is Category -> CategoryHeader(node)
-		is SearchBar -> SearchHeader(node, onSearch)
+		is SearchBar -> SearchHeader(node, onSearch, googleDesign)
 		is NavRow -> NavRowItem(node, onNavigate)
 		is ActionRow -> ActionRowItem(node)
 		// Unreachable from the home screen, a lone tile renders as a bubble of one.
-		is MainTile -> TileBubble(listOf(node), onNavigate)
+		is MainTile -> TileBubble(listOf(node), 0L, googleDesign, onNavigate)
 		is SwitchPref -> SwitchItem(node, store)
 		is SliderPref -> SliderItem(node, store)
 		is ListPref -> ListChoiceItem(node, store)
@@ -510,7 +526,11 @@ private fun CategoryHeader(node: Category) {
 }
 
 @Composable
-private fun SearchHeader(node: SearchBar, onSearch: () -> Unit) {
+private fun SearchHeader(node: SearchBar, onSearch: () -> Unit, googleDesign: Boolean) {
+	if (googleDesign) {
+		GoogleSearchHeader(onSearch)
+		return
+	}
 	// Tapping the widget opens the search screen rather than filtering this
 	// one. The field itself is disabled so it cannot take focus or consume the
 	// gesture, and the click lives on the wrapper; colours are overridden so
@@ -536,6 +556,37 @@ private fun SearchHeader(node: SearchBar, onSearch: () -> Unit) {
 				disabledLeadingIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
 				disabledTrailingIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
 			),
+		)
+	}
+}
+
+// The rounded search widget of the Google design
+@Composable
+private fun GoogleSearchHeader(onSearch: () -> Unit) {
+	val shape = RoundedCornerShape(percent = 50)
+
+	Row(
+		modifier = Modifier
+			.fillMaxWidth()
+			.padding(horizontal = 16.dp, vertical = 8.dp)
+			.height(56.dp)
+			.clip(shape)
+			.background(MaterialTheme.colorScheme.surfaceContainerLowest)
+			.border(1.dp, MaterialTheme.colorScheme.outline, shape)
+			.clickable(onClick = onSearch)
+			.padding(horizontal = 20.dp),
+		verticalAlignment = Alignment.CenterVertically,
+	) {
+		Icon(
+			imageVector = Icons.Filled.Search,
+			contentDescription = null,
+			tint = MaterialTheme.colorScheme.onSurfaceVariant,
+		)
+		Spacer(modifier = Modifier.width(16.dp))
+		Text(
+			text = stringResource(R.string.searchpreference_search),
+			style = MaterialTheme.typography.bodyLarge,
+			color = MaterialTheme.colorScheme.onSurfaceVariant,
 		)
 	}
 }
@@ -584,7 +635,12 @@ private fun ActionRowItem(node: ActionRow) {
 
 // One rounded bubble holding all home tiles with a divider
 @Composable
-private fun TileBubble(tiles: List<MainTile>, onNavigate: (route: String, title: Int) -> Unit) {
+private fun TileBubble(
+	tiles: List<MainTile>,
+	accent: Long,
+	googleDesign: Boolean,
+	onNavigate: (route: String, title: Int) -> Unit,
+) {
 	Card(
 		modifier = Modifier
 			.fillMaxWidth()
@@ -596,9 +652,13 @@ private fun TileBubble(tiles: List<MainTile>, onNavigate: (route: String, title:
 	) {
 		tiles.forEachIndexed { index, tile ->
 			if (index > 0) {
-				HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+				// the window background show through (used as a divider)
+				HorizontalDivider(
+					thickness = 2.dp,
+					color = MaterialTheme.colorScheme.background,
+				)
 			}
-			TileRow(tile, onNavigate)
+			TileRow(tile, accent, googleDesign, onNavigate)
 		}
 	}
 }
@@ -606,9 +666,20 @@ private fun TileBubble(tiles: List<MainTile>, onNavigate: (route: String, title:
 /**
  * A single home tile. The bubble supplies the card, this is only the
  * row: circle, title, summary, and the click opens [MainTile.route].
+ *
+ * Google design - the circle takes the category's [accent] and the glyph is tinted with the card colour
  */
 @Composable
-private fun TileRow(node: MainTile, onNavigate: (route: String, title: Int) -> Unit) {
+private fun TileRow(
+	node: MainTile,
+	accent: Long,
+	googleDesign: Boolean,
+	onNavigate: (route: String, title: Int) -> Unit,
+) {
+	val painted = googleDesign && accent != 0L
+	val circle = if (painted) Color(accent.toInt()) else MaterialTheme.colorScheme.primaryContainer
+	val glyph = if (painted) MaterialTheme.colorScheme.surfaceContainer else MaterialTheme.colorScheme.onSurface
+
 	Row(
 		modifier = Modifier
 			.fillMaxWidth()
@@ -623,7 +694,7 @@ private fun TileRow(node: MainTile, onNavigate: (route: String, title: Int) -> U
 				modifier = Modifier
 					.size(40.dp)
 					.background(
-						color = MaterialTheme.colorScheme.primaryContainer,
+						color = circle,
 						shape = CircleShape,
 					),
 				contentAlignment = Alignment.Center,
@@ -631,7 +702,7 @@ private fun TileRow(node: MainTile, onNavigate: (route: String, title: Int) -> U
 				Icon(
 					painter = painterResource(node.icon),
 					contentDescription = null,
-					tint = MaterialTheme.colorScheme.onSurface,
+					tint = glyph,
 				)
 			}
 			Spacer(modifier = Modifier.width(16.dp))

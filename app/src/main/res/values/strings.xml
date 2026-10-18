@@ -2,6 +2,8 @@
     <!--General strings-->
     <string name="app_name" translatable="false">PixelXpert-Next</string>
     <string name="app_themed_icon_title">Alternative Themed Icon</string>
+    <string name="google_settings_design_title">Use Google settings design</string>
+    <string name="google_settings_design_summary">Rounded search bar and colourful icons</string>
     <string name="xposed_desc">Customizations for Google Pixel devices</string>
     <string name="title_activity_settings" translatable="false">@string/app_name</string>
     <string name="volume_tile_title">Media Volume</string>
