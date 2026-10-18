@@ -34,6 +34,7 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Checkbox
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.ListItem
@@ -130,6 +131,9 @@ fun PrefScreenContent(
 	// hiding its own sub-rows take effect without the screen being reopened.
 	val rows = flat.filter { visibleBy(store, it.node.nodeKey) }
 
+	// Tiles that sit beside each other share a bubble
+	val blocks = rows.toBlocks()
+
 	LazyColumn(
 		modifier = modifier.fillMaxSize(),
 		contentPadding = PaddingValues(bottom = 32.dp),
@@ -138,15 +142,46 @@ fun PrefScreenContent(
 		// android:title, so any title-derived key collides ("c:0" was already
 		// used). The list is positional so rows appear and disappear correctly
 		// when a dependency flips.
-		items(rows) { item ->
-			PrefNodeRow(
-				node = item.node,
-				store = store,
-				onNavigate = onNavigate,
-				onSearch = onSearch,
-			)
+		items(blocks) { block ->
+			when (block) {
+				is PrefBlock.Row -> PrefNodeRow(
+					node = block.item.node,
+					store = store,
+					onNavigate = onNavigate,
+					onSearch = onSearch,
+				)
+
+				is PrefBlock.Tiles -> TileBubble(block.tiles, onNavigate)
+			}
 		}
 	}
+}
+
+// One entry of the rendered list (either a single node, or the run of tiles)
+private sealed interface PrefBlock {
+	data class Row(val item: FlattenedNode) : PrefBlock
+	data class Tiles(val tiles: List<MainTile>) : PrefBlock
+}
+
+// Each run of consecutive [MainTile]s into a [PrefBlock.Tiles].
+private fun List<FlattenedNode>.toBlocks(): List<PrefBlock> {
+	val blocks = ArrayList<PrefBlock>(size)
+	var i = 0
+	while (i < size) {
+		val node = this[i].node
+		if (node !is MainTile) {
+			blocks += PrefBlock.Row(this[i])
+			i++
+			continue
+		}
+		val tiles = ArrayList<MainTile>()
+		while (i < size && this[i].node is MainTile) {
+			tiles += this[i].node as MainTile
+			i++
+		}
+		blocks += PrefBlock.Tiles(tiles)
+	}
+	return blocks
 }
 
 /**
@@ -207,7 +242,8 @@ private fun PrefNodeRow(
 		is SearchBar -> SearchHeader(node, onSearch)
 		is NavRow -> NavRowItem(node, onNavigate)
 		is ActionRow -> ActionRowItem(node)
-		is MainTile -> MainTileItem(node, onNavigate)
+		// Unreachable from the home screen, a lone tile renders as a bubble of one.
+		is MainTile -> TileBubble(listOf(node), onNavigate)
 		is SwitchPref -> SwitchItem(node, store)
 		is SliderPref -> SliderItem(node, store)
 		is ListPref -> ListChoiceItem(node, store)
@@ -546,59 +582,74 @@ private fun ActionRowItem(node: ActionRow) {
 	)
 }
 
+// One rounded bubble holding all home tiles with a divider
 @Composable
-private fun MainTileItem(node: MainTile, onNavigate: (route: String, title: Int) -> Unit) {
+private fun TileBubble(tiles: List<MainTile>, onNavigate: (route: String, title: Int) -> Unit) {
 	Card(
 		modifier = Modifier
 			.fillMaxWidth()
-			.padding(horizontal = 16.dp, vertical = 6.dp)
-			.clickable(enabled = node.route != null) {
-				node.route?.let { r -> onNavigate(r, node.title) }
-			},
+			.padding(horizontal = 16.dp, vertical = 6.dp),
 		shape = RoundedCornerShape(20.dp),
 		colors = CardDefaults.cardColors(
 			containerColor = MaterialTheme.colorScheme.surfaceContainer,
 		),
 	) {
-		Row(
-			modifier = Modifier
-				.fillMaxWidth()
-				.padding(16.dp),
-			verticalAlignment = Alignment.CenterVertically,
-		) {
-			if (node.icon != 0) {
-				Box(
-					modifier = Modifier
-						.size(40.dp)
-						.background(
-							color = MaterialTheme.colorScheme.primaryContainer,
-							shape = CircleShape,
-						),
-					contentAlignment = Alignment.Center,
-				) {
-					Icon(
-						painter = painterResource(node.icon),
-						contentDescription = null,
-						tint = MaterialTheme.colorScheme.onSurface,
-					)
-				}
-				Spacer(modifier = Modifier.width(16.dp))
+		tiles.forEachIndexed { index, tile ->
+			if (index > 0) {
+				HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
 			}
+			TileRow(tile, onNavigate)
+		}
+	}
+}
 
-			Column(modifier = Modifier.weight(1f)) {
-				Text(
-					text = titleText(node),
-					style = MaterialTheme.typography.titleMedium,
-					color = MaterialTheme.colorScheme.onSurface,
+/**
+ * A single home tile. The bubble supplies the card, this is only the
+ * row: circle, title, summary, and the click opens [MainTile.route].
+ */
+@Composable
+private fun TileRow(node: MainTile, onNavigate: (route: String, title: Int) -> Unit) {
+	Row(
+		modifier = Modifier
+			.fillMaxWidth()
+			.clickable(enabled = node.route != null) {
+				node.route?.let { r -> onNavigate(r, node.title) }
+			}
+			.padding(16.dp),
+		verticalAlignment = Alignment.CenterVertically,
+	) {
+		if (node.icon != 0) {
+			Box(
+				modifier = Modifier
+					.size(40.dp)
+					.background(
+						color = MaterialTheme.colorScheme.primaryContainer,
+						shape = CircleShape,
+					),
+				contentAlignment = Alignment.Center,
+			) {
+				Icon(
+					painter = painterResource(node.icon),
+					contentDescription = null,
+					tint = MaterialTheme.colorScheme.onSurface,
 				)
-				if (node.summary != 0) {
-					Text(
-						text = stringResource(node.summary),
-						style = MaterialTheme.typography.bodyMedium,
-						color = MaterialTheme.colorScheme.onSurfaceVariant,
-						modifier = Modifier.padding(top = 4.dp),
-					)
-				}
+			}
+			Spacer(modifier = Modifier.width(16.dp))
+		}
+
+		Column(modifier = Modifier.weight(1f)) {
+			Text(
+				text = titleText(node),
+				style = MaterialTheme.typography.titleMedium,
+				color = MaterialTheme.colorScheme.onSurface,
+			)
+			if (node.summary != 0) {
+				Text(
+					text = stringResource(node.summary),
+					style = MaterialTheme.typography.bodyMedium,
+					color = MaterialTheme.colorScheme.onSurfaceVariant,
+					modifier = Modifier.padding(top = 4.dp),
+				)
 			}
 		}
 	}
