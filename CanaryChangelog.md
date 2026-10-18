@@ -1,3 +1,10 @@
+**canary-533**  
+- ui: add a Google settings design toggle  
+- ui: home: group the tiles into categories  
+- leave the device-credential pad unshuffled  
+- ui: PxnNav: solid destinations and predictive-back transitions  
+- capture the edge handler from createDisplayBackGestureHandler  
+  
 **canary-532**  
 - Only customize the clock on Compose clock builds + keep companions ticking  
 - investigator: Add the preference store to the markdown report  
