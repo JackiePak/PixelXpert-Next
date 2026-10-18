@@ -174,6 +174,10 @@ dependencies {
 	// on the compile classpath without this line.
 	implementation(libs.androidx.concurrent.futures)
 
+	// The dispatchers and withContext calls the app makes itself; work-runtime
+	// and Compose only bring this in transitively.
+	implementation(libs.kotlinx.coroutines.android)
+
 	implementation(libs.koin.core)
 	implementation(libs.koin.android)
 	implementation(libs.koin.compose)

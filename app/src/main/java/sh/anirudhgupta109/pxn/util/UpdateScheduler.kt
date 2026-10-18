@@ -3,7 +3,9 @@ package sh.anirudhgupta109.pxn.util
 import android.content.Context
 import androidx.work.BackoffPolicy
 import androidx.work.Configuration
+import androidx.work.Constraints
 import androidx.work.ExistingPeriodicWorkPolicy
+import androidx.work.NetworkType
 import androidx.work.PeriodicWorkRequest
 import androidx.work.WorkManager
 import java.util.concurrent.TimeUnit
@@ -25,6 +27,9 @@ import sh.anirudhgupta109.pxn.data.PrefStore
  * The `AutoUpdate` fallback is `false`, which is the row's own default and
  * therefore what the switch displays; falling back to `true` would make boot
  * and settings disagree whenever the key is absent, so the switch wins.
+ *
+ * The request asks for the same network the worker itself checks, so a run
+ * that has no usable link is deferred instead of started and retried.
  */
 object UpdateScheduler {
 
@@ -42,11 +47,18 @@ object UpdateScheduler {
 		val autoUpdate = prefs.getBoolean("AutoUpdate", false)
 
 		if (autoUpdate) {
+			val networkType = if (prefs.getBoolean(UpdateWorker.KEY_WIFI_ONLY, true)) {
+				NetworkType.UNMETERED
+			} else {
+				NetworkType.CONNECTED
+			}
+
 			val request = PeriodicWorkRequest.Builder(
 				UpdateWorker::class.java,
 				INTERVAL_HOURS,
 				TimeUnit.HOURS,
 			)
+				.setConstraints(Constraints.Builder().setRequiredNetworkType(networkType).build())
 				.setBackoffCriteria(BackoffPolicy.LINEAR, 1, TimeUnit.HOURS)
 				.build()
 

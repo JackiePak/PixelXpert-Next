@@ -3,11 +3,11 @@ package sh.anirudhgupta109.pxn.xposed.modpacks.android
 import android.content.Context
 import android.content.Intent
 import android.os.Binder
+import android.os.Handler
+import android.os.Looper
 import de.robv.android.xposed.XposedHelpers.callMethod
 import de.robv.android.xposed.XposedHelpers.getObjectField
 import io.github.libxposed.api.XposedModuleInterface
-import java.util.Timer
-import java.util.TimerTask
 import sh.anirudhgupta109.pxn.BuildConfig
 import sh.anirudhgupta109.pxn.Constants
 import sh.anirudhgupta109.pxn.xposed.XPrefs.Xprefs
@@ -56,11 +56,8 @@ class PackageManager(context: Context) : XposedModPack(context) {
 			if (key.isEmpty()) {
 				disablePMMods()
 			} else if (key[0].equals(ALLOW_SIGNATURE_PREF) || key[0].equals(ALLOW_DOWNGRADE_PREF)) {
-				Timer().schedule(object : TimerTask() {
-					override fun run() {
-						disablePMMods()
-					}
-				},
+				Handler(Looper.getMainLooper()).postDelayed(
+					{ disablePMMods() },
 					AUTO_DISABLE_MINUTES * 60000L,
 				)
 			}

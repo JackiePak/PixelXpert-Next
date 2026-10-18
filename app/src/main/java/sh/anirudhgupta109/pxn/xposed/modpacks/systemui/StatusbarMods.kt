@@ -42,8 +42,6 @@ import de.robv.android.xposed.XposedHelpers.setObjectField
 import io.github.libxposed.api.XposedModuleInterface
 import java.util.Arrays
 import java.util.Locale
-import java.util.Timer
-import java.util.TimerTask
 import java.util.concurrent.Executor
 import javax.security.auth.callback.Callback
 import org.objenesis.ObjenesisHelper
@@ -836,11 +834,9 @@ class StatusbarMods @SuppressLint("DiscouragedApi") constructor(context: Context
 		PhoneStatusBarViewClass
 			.after("onConfigurationChanged")
 			.run {
-				Timer().schedule(object : TimerTask() {
-					override fun run() {
-						if (BatteryBarView.hasInstance()) {
-							BatteryBarView.getInstance()!!.post { refreshBatteryBar(BatteryBarView.getInstance()!!) }
-						}
+				Handler(Looper.getMainLooper()).postDelayed({
+					if (BatteryBarView.hasInstance()) {
+						BatteryBarView.getInstance()!!.post { refreshBatteryBar(BatteryBarView.getInstance()!!) }
 					}
 				}, 2000)
 			}
