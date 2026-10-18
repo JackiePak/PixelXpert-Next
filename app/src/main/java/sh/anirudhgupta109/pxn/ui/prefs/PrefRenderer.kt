@@ -8,6 +8,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.DragInteraction
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.PressInteraction
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
@@ -69,6 +70,7 @@ import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.layout.Layout
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
@@ -82,6 +84,7 @@ import com.airbnb.lottie.compose.LottieCompositionSpec
 import com.airbnb.lottie.compose.LottieConstants
 import com.airbnb.lottie.compose.animateLottieCompositionAsState
 import com.airbnb.lottie.compose.rememberLottieComposition
+import com.google.android.material.color.utilities.Hct
 import sh.anirudhgupta109.pxn.BuildConfig
 import sh.anirudhgupta109.pxn.R
 import sh.anirudhgupta109.pxn.data.PrefStore
@@ -667,7 +670,8 @@ private fun TileBubble(
  * A single home tile. The bubble supplies the card, this is only the
  * row: circle, title, summary, and the click opens [MainTile.route].
  *
- * Google design - the circle takes the category's [accent] and the glyph is tinted with the card colour
+ * Google design - the circle takes the category's [accent] and the glyph is
+ * that accent's tone 30 out of [glyphOn]
  */
 @Composable
 private fun TileRow(
@@ -678,7 +682,13 @@ private fun TileRow(
 ) {
 	val painted = googleDesign && accent != 0L
 	val circle = if (painted) Color(accent.toInt()) else MaterialTheme.colorScheme.primaryContainer
-	val glyph = if (painted) MaterialTheme.colorScheme.surfaceContainer else MaterialTheme.colorScheme.onSurface
+	val glyph = when {
+		painted -> glyphOn(Color(accent.toInt()))
+		// The app's own design keeps the theme's glyph in the light theme and
+		// takes the background colour in the dark one
+		isSystemInDarkTheme() -> MaterialTheme.colorScheme.background
+		else -> MaterialTheme.colorScheme.onSurface
+	}
 
 	Row(
 		modifier = Modifier
@@ -725,6 +735,20 @@ private fun TileRow(
 		}
 	}
 }
+
+/**
+ * The glyph the system Settings app draws inside one of its circles.
+ *
+ * The circles are tones of the M3 reference palette the system carries, so
+ * reading the accent's hue and chroma back out and asking for tone 30 regardless of accent.
+ */
+private fun glyphOn(accent: Color): Color {
+	val hct = Hct.fromInt(accent.toArgb())
+	return Color(Hct.from(hct.hue, hct.chroma, GlyphTone).toInt())
+}
+
+/** The dark tone the system pairs its pale circle tones with. */
+private const val GlyphTone = 30.0
 
 @Composable
 private fun summaryOrNull(res: Int, modifier: Modifier = Modifier): (@Composable () -> Unit)? =

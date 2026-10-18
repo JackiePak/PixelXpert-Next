@@ -197,6 +197,8 @@ dependencies {
 	implementation(libs.objenesis)
 	implementation(libs.androidx.constraintlayout)
 	implementation(libs.androidx.appcompat)
+	// Material Components
+	implementation(libs.material.components)
 
 	// Persian (Solar Hijri) date formatting in StringFormatter.
 	implementation(libs.persian.date.time)

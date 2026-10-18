@@ -11,6 +11,7 @@ gson = "2.13.2"
 jetbrainsMarkdown = "0.7.16"
 lottie = "6.7.1"
 libsuVersion = "6.0.0"
+materialComponents = "1.14.0"
 objenesis = "3.4"
 ntpClient = "0.0.1-alpha11"
 persianDateTime = "4.2.1"
@@ -52,6 +53,7 @@ gson = { module = "com.google.code.gson:gson", version.ref = "gson" }
 # processor's API surface matches the plugin that loads it.
 symbol-processing-api = { module = "com.google.devtools.ksp:symbol-processing-api", version.ref = "ksp" }
 lottie = { module = "com.airbnb.android:lottie", version.ref = "lottie" }
+material-components = { module = "com.google.android.material:material", version.ref = "materialComponents" }
 libsuCore = { module = "com.github.topjohnwu.libsu:core", version.ref = "libsuVersion" }
 libsuNIO = { module = "com.github.topjohnwu.libsu:nio", version.ref = "libsuVersion" }
 libsuService = { module = "com.github.topjohnwu.libsu:service", version.ref = "libsuVersion" }
