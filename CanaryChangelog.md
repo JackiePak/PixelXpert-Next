@@ -1,3 +1,8 @@
+**canary-534**  
+- xposed: Add an adaptive brightness toggle to the brightness slider  
+- replace hand-rolled helpers with platform APIs  
+- ui: derive the Google-design glyph from its accent  
+  
 **canary-533**  
 - ui: add a Google settings design toggle  
 - ui: home: group the tiles into categories  
