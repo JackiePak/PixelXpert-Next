@@ -1,3 +1,7 @@
+**canary-535**  
+- Make the QS clock/date taps work on the Compose shade header  
+- screens: Hook the battery bar page to statusbar instead of leaving just the toggle  
+  
 **canary-534**  
 - xposed: Add an adaptive brightness toggle to the brightness slider  
 - replace hand-rolled helpers with platform APIs  
