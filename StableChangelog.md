@@ -1,10 +1,27 @@
+**6.1.1**  
+- Fix QQS row count customization in Sept/Oct stable [cp2a/cp3a]
+- Remove PX-N flashlight QS tile (Google has a nicer version in the OS already)
+- Fix flashlight fade effect
+- Fix log spam for profile switch broadcast
+- Add toggle to block sensitive QS tiles and power menu in lockscreen
+- We are back on crowdin!! please bring your translations in! [ https://crowdin.com/project/pixelxpert-next ]
+- Re-add the colour customization of network traffic on statusbar
+- Different implementation of statusbar clock so that the time on QS stays stock and we can resize individual elements of the clock. Read more on: https://t.me/s/PixelXpert_Github/1135
+- Fix some compatibility with iconify [I STILL DONT SUPPORT USAGE OF OTHER MODS ALONGSIDE!!]
+- Fix disabling of back gesture for gesture navigation
+- Improve PX-N app animations
+- Fix pin being scrambled in non-lockscreen pin entry screens (applocks, sim pin entries, etc.)
+- Group PX-N app items into categories and add an optional Google Settings style UI (I personally still like our monet implementation more)
+- Remove a lot of dead code, duplicate implementations and overloaded implementations with a more streamlined (and extensible) approach
+- Add an adaptive brightness icon next to the brightness slider [are we back on GravityBox???]
+
+[As a reminder: Google has still not given the new SystemUI changes to the P11, so I still can't fix some issues introduced in the September/October build]
+
 **6.1.0**  
-NOTE: On flashing the module, a new app will be installed and the old app will be removed, you will have to grant root for it and apply it in lsposed/vector. More details on XDA/TG
 i would recommend not restoring your profile into the app since this is a newly built app from the groundup and preferences might not carry over cleanly
 - Bringup the new PixelXpert-Next app (a full rewrite and bringup in kotlin (including the lsposed backend) + jetpack compose + Material 3 Expressive (respects your system's colours))
 - Fix UI glitches when "Close quick settings with one swipe" is enabled
 - Fix custom statusbar icon visibility (volte/vowifi)
-[As a reminder: Google has still not given the new SystemUI changes to the P11, so I still can't fix the issues introduced in the September/October build]
 
 **6.0.9**  
 - Add high brightness flash QS tile and allow for gestures to utilize this high brightness mode
