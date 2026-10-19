@@ -28,6 +28,7 @@ val quicksettings_prefs: PrefScreen = PrefScreen(
 				SwitchPref(key = "oneFingerPullupEnabled", title = R.string.qs_pullup_switch_title, default = "false", summaryOn = R.string.general_on, summaryOff = R.string.general_off),
 				SwitchPref(key = "qs_brightness_slider_bottom", title = R.string.qs_brightness_slider_bottom_title, summary = R.string.qs_brightness_slider_bottom_desc, default = "false"),
 				SwitchPref(key = "qqs_brightness_slider", title = R.string.qqs_brightness_slider_title, summary = R.string.qqs_brightness_slider_desc, default = "false"),
+				SwitchPref(key = "QSAutoBrightnessToggle", title = R.string.QS_auto_brightness_title, summary = R.string.QS_auto_brightness_desc, default = "false"),
 	),
 			),
 	),

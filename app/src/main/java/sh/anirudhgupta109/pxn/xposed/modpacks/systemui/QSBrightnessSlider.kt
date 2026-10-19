@@ -36,12 +36,15 @@ import sh.anirudhgupta109.pxn.xposed.utils.reflection.ReflectedClass
  * corresponding field null and the feature simply does not engage, rather than
  * taking SystemUI down with it.
  *
- * The two preferences:
+ * The three preferences:
  * - `qs_brightness_slider_bottom` - draw the slider below the tiles instead of
  *   above them.
  * - `qqs_brightness_slider` - also draw it in collapsed (quick-quick) QS, and
  *   share one instance with the expanded panel via a scene `ElementKey` so the
  *   two do not fight over the same view model.
+ * - `QSAutoBrightnessToggle` - an adaptive brightness button at the end of the
+ *   slider. The track's own `Modifier` is padded at the call site to make room for it
+ *   see [hookBrightnessSlider].
  *
  * [hookSceneContainer] also hooks `QuickSettingsShadeOverlayKt.QuickSettingsLayoutContent`,
  * a third way into the panel layout. Without it the slider stays above the
@@ -52,15 +55,28 @@ class QSBrightnessSlider(context: Context) : XposedModPack(context) {
 
 	private var brightnessBelowTiles = false
 	private var brightnessInQqs = false
+	private var autoBrightnessToggle = false
 
 	//region resolved compose APIs - all null until resolveComposeApis() finds them
 	private var function0Class: Class<*>? = null
+	private var function1Class: Class<*>? = null
 	private var function2Class: Class<*>? = null
 	private var function3Class: Class<*>? = null
 	private var kotlinUnit: Any? = null
 	private var modifierCompanion: Any? = null
 	private var sharedElementKey: Any? = null
 	private var brightnessContainerMethod: Method? = null
+	private var brightnessSliderMethod: Method? = null
+	private var sliderModifierIndex = -1
+	private var sliderComposerIndex = -1
+	private var androidViewMethod: Method? = null
+	private var paddingMethod: Method? = null
+	private var sizeMethod: Method? = null
+	private var alignMethod: Method? = null
+	private var modifierThenMethod: Method? = null
+	private var modifierFoldInMethod: Method? = null
+	private var boxScopeInstance: Any? = null
+	private var centerEndAlignment: Any? = null
 	private var containerColorsConstructor: Constructor<*>? = null
 	private var rememberViewModelMethod: Method? = null
 	private var sceneBrightnessElementKey: Any? = null
@@ -89,17 +105,31 @@ class QSBrightnessSlider(context: Context) : XposedModPack(context) {
 	private var shadeScope: Any? = null
 	private val shadeQqsSlots = WeakHashMap<Any, Any>()
 
+	// Padded slider modifiers
+	// the slider recomposes on every frame of a brightness animation
+	private val paddedSliderModifiers = WeakHashMap<Any, Any>()
+	private val sliderModifierOrigins = WeakHashMap<Any, Any>()
+
+	// Whether a chain is mirrored - the hook is handed the same back on frames of an animation.
+	private val sliderMirrorStates = WeakHashMap<Any, Boolean>()
+
+	// The lambdas `AndroidView` needs are built once
+	private var androidViewFactorySlot: Any? = null
+	private var androidViewUpdateSlot: Any? = null
+
 	private fun className(pkg: String, cls: String): String = "$pkg.$cls"
 
 	override fun onPreferenceUpdated(vararg key: String?) {
 		brightnessBelowTiles = Xprefs.getBoolean("qs_brightness_slider_bottom", false)
 		brightnessInQqs = Xprefs.getBoolean("qqs_brightness_slider", false)
+		autoBrightnessToggle = Xprefs.getBoolean("QSAutoBrightnessToggle", false)
 	}
 
 	override fun onPackageLoaded(PRParam: XposedModuleInterface.PackageReadyParam) {
 		resolveComposeApis()
 		hookQsFragmentCompose()
 		hookSceneContainer()
+		hookBrightnessSlider()
 	}
 
 	private fun hookQsFragmentCompose() {
@@ -372,6 +402,220 @@ class QSBrightnessSlider(context: Context) : XposedModPack(context) {
 		}
 	}
 
+	//region adaptive brightness toggle
+
+	/**
+	 * Puts an adaptive brightness button at the end of every brightness slider.
+	 *
+	 * The call site is `BrightnessSlider` - the track.
+	 * Hooking the track covers SystemUI's slider and the
+	 * moved slider with a single hook - the button's
+	 * `align(CenterEnd)` is resolved by the container's `Box`.
+	 *
+	 * A mirrored slider - one SystemUI is repainting above the panel for the
+	 * "brightness mirror" - skips the button.
+	 */
+	private fun hookBrightnessSlider() {
+		val slider = brightnessSliderMethod ?: return
+
+		// The toggle composes through Compose interop
+		val missing = ArrayList<String>()
+		if (sliderModifierIndex == -1 || sliderComposerIndex == -1) missing.add("slider arguments")
+		if (androidViewMethod == null) missing.add("AndroidView")
+		if (boxScopeInstance == null || alignMethod == null) missing.add("align")
+		if (centerEndAlignment == null) missing.add("CenterEnd")
+		if (sizeMethod == null) missing.add("size")
+		if (paddingMethod == null) missing.add("padding")
+		if (modifierThenMethod == null) missing.add("then")
+		if (modifierFoldInMethod == null || function2Class == null) missing.add("foldIn")
+		if (function1Class == null) missing.add("Function1")
+		if (modifierCompanion == null) missing.add("Modifier")
+		if (missing.isNotEmpty()) {
+			log("QSBrightnessSlider: adaptive brightness toggle missing ${missing.joinToString(", ")}")
+		}
+
+		val brightnessSliderKt = ReflectedClass.ofIfPossible(
+			className("com.android.systemui.brightness.ui.compose", "BrightnessSliderKt"),
+		)
+		if (brightnessSliderKt.clazz == null) return
+
+		brightnessSliderKt.before(slider).run { param ->
+			if (!autoBrightnessToggle) return@run
+			if (sliderModifierIndex == -1) return@run
+
+			val incoming = param.args.getOrNull(sliderModifierIndex) ?: return@run
+			val known = sliderModifierOrigins[incoming]
+			val original = known ?: incoming
+			val padded = paddedSliderModifiers[original] ?: paddedSliderModifier(original) ?: return@run
+			paddedSliderModifiers[original] = padded
+			sliderModifierOrigins[padded] = original
+			param.args[sliderModifierIndex] = padded
+		}
+
+		brightnessSliderKt.after(slider).run { param ->
+			if (!autoBrightnessToggle) return@run
+
+			val sliderModifier = param.args.getOrNull(sliderModifierIndex)
+			if (sliderModifier != null && sliderIsMirroring(sliderModifier)) return@run
+
+			val composer = param.args.getOrNull(sliderComposerIndex) ?: return@run
+
+			startGroup(composer, GROUP_QS_AUTO_BRIGHTNESS)
+			try {
+				composeAutoBrightnessToggle(composer)
+			} catch (t: Throwable) {
+				log("QSBrightnessSlider: adaptive brightness toggle could not be composed", t)
+			} finally {
+				endGroup(composer)
+			}
+		}
+	}
+
+	/**
+	 * `Modifier.padding(end = toggle + gap).then(original)`.
+	 *
+	 * The padding is prepended - wraps everything the slider draws
+	 * keeps the animated frame behind the track from running under the button.
+	 */
+	private fun paddedSliderModifier(original: Any): Any? {
+		val padding = paddingMethod ?: return null
+		val then = modifierThenMethod ?: return null
+		val modifier = modifierCompanion ?: return null
+
+		return try {
+			val end = AUTO_BRIGHTNESS_TOGGLE_DP + AUTO_BRIGHTNESS_GAP_DP
+			val padded = padding.invoke(null, modifier, 0f, 0f, end, 0f)
+			then.invoke(padded, original)
+		} catch (t: Throwable) {
+			null
+		}
+	}
+
+	/** Compose [AutoBrightnessButton] as a attachment of slider - at end. */
+	private fun composeAutoBrightnessToggle(composer: Any) {
+		val androidView = androidViewMethod ?: return
+		val scope = boxScopeInstance ?: return
+		val align = alignMethod ?: return
+		val centerEnd = centerEndAlignment ?: return
+		val size = sizeMethod ?: return
+		val empty = modifierCompanion ?: return
+		val factory = androidViewFactory() ?: return
+		val update = androidViewUpdate() ?: return
+
+		try {
+			val sized = size.invoke(null, empty, AUTO_BRIGHTNESS_TOGGLE_DP)
+			val aligned = align.invoke(scope, sized, centerEnd)
+			androidView.invoke(null, factory, aligned, update, composer, 0, 0)
+		} catch (t: Throwable) {
+		}
+	}
+
+	/**
+	 * Whether the slider is drawing into the mirror overlay.
+	 */
+	private fun sliderIsMirroring(modifier: Any): Boolean {
+		sliderMirrorStates[modifier]?.let { return it }
+
+		val mirroring = modifierElementNames(modifier).any { name ->
+			val simple = name.substringAfterLast('.')
+			name.startsWith(MIRROR_ELEMENT_PACKAGE) &&
+				(simple.startsWith("DrawInContainer") || simple.startsWith("DrawInOverlay") ||
+					simple == "ContainerElement")
+		}
+		sliderMirrorStates[modifier] = mirroring
+		return mirroring
+	}
+
+	/** The class names of every element in a `Modifier` chain, in order. */
+	private fun modifierElementNames(modifier: Any): List<String> {
+		val foldIn = modifierFoldInMethod ?: return emptyList()
+		val names = ArrayList<String>()
+		val operation = function2Proxy { _, element ->
+			if (element != null) {
+				names.add(element.javaClass.name)
+			}
+			names
+		} ?: return emptyList()
+
+		return try {
+			foldIn.invoke(modifier, names, operation)
+			names
+		} catch (t: Throwable) {
+			emptyList()
+		}
+	}
+
+	private fun androidViewFactory(): Any? {
+		androidViewFactorySlot?.let { return it }
+		val function1 = function1Class ?: return null
+
+		val factory = Proxy.newProxyInstance(
+			function1.classLoader,
+			arrayOf(function1),
+			InvocationHandler { proxy, method, args ->
+				when (method.name) {
+					"invoke" -> (args?.getOrNull(0) as? Context)?.let { AutoBrightnessButton(it) }
+					"equals" -> proxy === args?.getOrNull(0)
+					"hashCode" -> System.identityHashCode(proxy)
+					"toString" -> "PXAutoBrightnessFactory"
+					else -> null
+				}
+			},
+		)
+
+		androidViewFactorySlot = factory
+		return factory
+	}
+
+	/**
+	 * `AndroidView`'s update lambda
+	 * Compose hands it the button on every recomposition - where the toggle re-reads the setting. It is not
+	 * the only path - the button also observes it itself.
+	 */
+	private fun androidViewUpdate(): Any? {
+		androidViewUpdateSlot?.let { return it }
+		val function1 = function1Class ?: return null
+
+		val update = Proxy.newProxyInstance(
+			function1.classLoader,
+			arrayOf(function1),
+			InvocationHandler { proxy, method, args ->
+				when (method.name) {
+					"invoke" -> {
+						(args?.getOrNull(0) as? AutoBrightnessButton)?.sync(animate = true)
+						kotlinUnit
+					}
+					"equals" -> proxy === args?.getOrNull(0)
+					"hashCode" -> System.identityHashCode(proxy)
+					"toString" -> "PXAutoBrightnessUpdate"
+					else -> null
+				}
+			},
+		)
+
+		androidViewUpdateSlot = update
+		return update
+	}
+
+	// The Kotlin APIs that are not composables,
+	private fun function2Proxy(block: (first: Any?, second: Any?) -> Any?): Any? {
+		val function2 = function2Class ?: return null
+		return Proxy.newProxyInstance(
+			function2.classLoader,
+			arrayOf(function2),
+			InvocationHandler { proxy, method, args ->
+				when (method.name) {
+					"invoke" -> block(args?.getOrNull(0), args?.getOrNull(1))
+					"equals" -> proxy === args?.getOrNull(0)
+					"hashCode" -> System.identityHashCode(proxy)
+					"toString" -> "PXAutoBrightnessFold"
+					else -> null
+				}
+			},
+		)
+	}
+	//endregion
+
 	private fun composeShadeBrightness(composer: Any) {
 		val containerViewModel = rememberShadeContainerViewModel(composer) ?: return
 		val brightnessViewModel = getObjectFieldSilently(containerViewModel, "brightnessSliderViewModel") ?: return
@@ -380,8 +624,8 @@ class QSBrightnessSlider(context: Context) : XposedModPack(context) {
 		val key = sceneBrightnessElementKey ?: sharedElementKey
 
 		if (scope != null && key != null) {
-			composeElement(scope, key, composer) {
-				composeBrightnessContainer(composer, brightnessViewModel)
+			composeElement(scope, key, composer) { innerComposer ->
+				composeBrightnessContainer(innerComposer, brightnessViewModel)
 			}
 		} else {
 			composeBrightnessContainer(composer, brightnessViewModel)
@@ -495,6 +739,11 @@ class QSBrightnessSlider(context: Context) : XposedModPack(context) {
 		}
 
 		try {
+			function1Class = findClassIfExists(className("kotlin.jvm.functions", "Function1"), cl)
+		} catch (t: Throwable) {
+		}
+
+		try {
 			val qsElementsClass = findClassIfExists(
 				className("com.android.systemui.qs.shared.ui", "QuickSettings\$Elements"), cl,
 			)
@@ -531,6 +780,92 @@ class QSBrightnessSlider(context: Context) : XposedModPack(context) {
 			brightnessContainerMethod = brightnessSliderKtClass?.declaredMethods
 				?.firstOrNull { it.name == "BrightnessSliderContainer" }
 				?.also { it.isAccessible = true }
+
+			// The track inside the container's `Box`
+			brightnessSliderMethod = brightnessSliderKtClass?.declaredMethods
+				?.firstOrNull {
+					it.name == "BrightnessSlider" &&
+						it.parameterTypes.any { type -> className("androidx.compose.ui", "Modifier") == type.name } &&
+						it.parameterTypes.any { type -> className("androidx.compose.runtime", "Composer") == type.name }
+				}
+				?.also { it.isAccessible = true }
+
+			brightnessSliderMethod?.let { slider ->
+				sliderModifierIndex = slider.parameterTypes.indexOfFirst {
+					className("androidx.compose.ui", "Modifier") == it.name
+				}
+				sliderComposerIndex = slider.parameterTypes.indexOfFirst {
+					className("androidx.compose.runtime", "Composer") == it.name
+				}
+			}
+		} catch (t: Throwable) {
+		}
+
+		try {
+			val androidViewKt = findClassIfExists(
+				className("androidx.compose.ui.viewinterop", "AndroidView_androidKt"), cl,
+			)
+			androidViewMethod = androidViewKt?.declaredMethods
+				?.firstOrNull {
+					it.name == "AndroidView" && it.parameterTypes.size == 6 &&
+						className("kotlin.jvm.functions", "Function1") == it.parameterTypes[0].name &&
+						className("androidx.compose.ui", "Modifier") == it.parameterTypes[1].name
+				}
+				?.also { it.isAccessible = true }
+		} catch (t: Throwable) {
+		}
+
+		try {
+			val boxScopeClass = findClassIfExists(
+				className("androidx.compose.foundation.layout", "BoxScopeInstance"), cl,
+			)
+			boxScopeInstance = getStaticObjectField(boxScopeClass, "INSTANCE")
+			alignMethod = boxScopeClass?.declaredMethods?.firstOrNull {
+				it.name == "align" && it.parameterTypes.size == 2
+			}
+		} catch (t: Throwable) {
+		}
+
+		try {
+			val alignmentCompanionClass = findClassIfExists(
+				className("androidx.compose.ui", "Alignment\$Companion"), cl,
+			)
+			centerEndAlignment = getStaticObjectField(alignmentCompanionClass, "CenterEnd")
+		} catch (t: Throwable) {
+		}
+
+		try {
+			val sizeKtClass = findClassIfExists(
+				className("androidx.compose.foundation.layout", "SizeKt"), cl,
+			)
+			sizeMethod = sizeKtClass?.declaredMethods?.firstOrNull {
+				it.name.startsWith("size-") && it.parameterTypes.size == 2 &&
+					className("androidx.compose.ui", "Modifier") == it.parameterTypes[0].name &&
+					it.parameterTypes[1] == java.lang.Float.TYPE
+			}
+		} catch (t: Throwable) {
+		}
+
+		try {
+			val paddingKtClass = findClassIfExists(
+				className("androidx.compose.foundation.layout", "PaddingKt"), cl,
+			)
+			paddingMethod = paddingKtClass?.declaredMethods?.firstOrNull {
+				it.name.startsWith("padding-") && it.parameterTypes.size == 5 &&
+					className("androidx.compose.ui", "Modifier") == it.parameterTypes[0].name &&
+					it.parameterTypes.drop(1).all { type -> type == java.lang.Float.TYPE }
+			}
+		} catch (t: Throwable) {
+		}
+
+		try {
+			val modifierClass = findClassIfExists(className("androidx.compose.ui", "Modifier"), cl)
+			modifierThenMethod = modifierClass?.declaredMethods?.firstOrNull {
+				it.name == "then" && it.parameterTypes.size == 1
+			}
+			modifierFoldInMethod = modifierClass?.declaredMethods?.firstOrNull {
+				it.name == "foldIn" && it.parameterTypes.size == 2
+			}
 		} catch (t: Throwable) {
 		}
 
@@ -563,8 +898,8 @@ class QSBrightnessSlider(context: Context) : XposedModPack(context) {
 		val key = sharedElementKey ?: return null
 
 		val slot = composableSlot { composer, changed ->
-			composeElement(scope, key, composer) {
-				callMethod(brightness, "invoke", composer, changed)
+			composeElement(scope, key, composer) { innerComposer ->
+				callMethod(brightness, "invoke", innerComposer, changed)
 			}
 		} ?: return null
 
@@ -576,7 +911,7 @@ class QSBrightnessSlider(context: Context) : XposedModPack(context) {
 		val scope = qqsScope
 		val key = sharedElementKey
 		if (scope != null && key != null) {
-			composeElement(scope, key, composer) { composeQsFragmentBrightness(composer) }
+			composeElement(scope, key, composer) { innerComposer -> composeQsFragmentBrightness(innerComposer) }
 		} else {
 			composeQsFragmentBrightness(composer)
 		}
@@ -587,20 +922,20 @@ class QSBrightnessSlider(context: Context) : XposedModPack(context) {
 	 * when the scene API is unavailable - the slider is still worth drawing
 	 * even if it cannot animate as a shared element.
 	 */
-	private fun composeElement(scope: Any, key: Any, composer: Any, content: () -> Unit) {
+	private fun composeElement(scope: Any, key: Any, composer: Any, content: (composer: Any) -> Unit) {
 		val elementMethod = scope.javaClass.methods
 			.firstOrNull { it.name == "Element" && it.parameterTypes.size == 5 }
-		val elementContent = composableContent(content)
+		val elementContent = composableContent(composer, content)
 
 		if (elementMethod == null || elementContent == null) {
-			content()
+			content(composer)
 			return
 		}
 
 		try {
 			elementMethod.invoke(scope, key, modifierCompanion, elementContent, composer, 0)
 		} catch (ignored: Throwable) {
-			content()
+			content(composer)
 		}
 	}
 
@@ -765,7 +1100,11 @@ class QSBrightnessSlider(context: Context) : XposedModPack(context) {
 		)
 	}
 
-	private fun composableContent(block: () -> Unit): Any? {
+	/**
+	 * `Element` composes content with a composer of its own so that is the one to draw into.
+	 * [fallback] is for when there is none.
+	 */
+	private fun composableContent(fallback: Any, block: (composer: Any) -> Unit): Any? {
 		val function3 = function3Class ?: return null
 		return Proxy.newProxyInstance(
 			function3.classLoader,
@@ -773,7 +1112,7 @@ class QSBrightnessSlider(context: Context) : XposedModPack(context) {
 			InvocationHandler { proxy, method, args ->
 				when (method.name) {
 					"invoke" -> {
-						block()
+						block(args?.getOrNull(1) ?: fallback)
 						kotlinUnit
 					}
 					"equals" -> proxy === args?.getOrNull(0)
@@ -934,5 +1273,16 @@ class QSBrightnessSlider(context: Context) : XposedModPack(context) {
 		/** Group keys chosen so they do not collide with SystemUI's own. */
 		private const val GROUP_QS_TILES_MEDIA = 0x1C0B5A1D
 		private const val GROUP_SCENE_TILES_MEDIA = 0x1C0B5A1E
+		private const val GROUP_QS_AUTO_BRIGHTNESS = 0x1C0B5A1F
+
+		/**
+		 * The adaptive brightness button - gap between it and the end of the slider.
+		 * Both are `Dp` values
+		 */
+		private const val AUTO_BRIGHTNESS_TOGGLE_DP = 44f
+		private const val AUTO_BRIGHTNESS_GAP_DP = 8f
+
+		/** Where `drawInContainer`/`drawInOverlay` put their modifier elements. */
+		private const val MIRROR_ELEMENT_PACKAGE = "com.android.compose.ui.graphics"
 	}
 }
