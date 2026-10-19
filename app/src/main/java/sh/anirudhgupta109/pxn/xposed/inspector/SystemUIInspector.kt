@@ -159,6 +159,40 @@ object SystemUIInspector {
 			)
 		)
 
+		// Shade header clock/date tap
+		val isComposeShadeHeader = InspectionUtils.resolveClass(
+			classLoader,
+			"com.android.systemui.shade.ui.composable.ShadeHeaderKt",
+		) != null
+
+		statusbarItems.add(
+			InspectionUtils.checkMethod(
+				classLoader,
+				"com.android.systemui.shade.ShadeHeaderController",
+				"onInit",
+				"ShadeHeaderController#onInit (Legacy Shade Header Clock/Date Tap)",
+				utilized = !isComposeShadeHeader,
+			)
+		)
+
+		statusbarItems.add(
+			InspectionUtils.checkClass(
+				classLoader,
+				"androidx.compose.foundation.ClickableKt",
+				"ClickableKt (Compose Shade Header Date Tap)",
+				utilized = isComposeShadeHeader,
+			)
+		)
+
+		statusbarItems.add(
+			InspectionUtils.checkClass(
+				classLoader,
+				"com.android.systemui.shade.ui.composable.VariableDayDateKt",
+				"VariableDayDateKt (Compose Shade Header Date)",
+				utilized = isComposeShadeHeader,
+			)
+		)
+
 		statusbarItems.add(
 			InspectionUtils.checkMethod(
 				classLoader,

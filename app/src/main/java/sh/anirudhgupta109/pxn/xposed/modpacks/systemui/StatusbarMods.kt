@@ -40,9 +40,13 @@ import de.robv.android.xposed.XposedHelpers.getObjectField
 import de.robv.android.xposed.XposedHelpers.setAdditionalInstanceField
 import de.robv.android.xposed.XposedHelpers.setObjectField
 import io.github.libxposed.api.XposedModuleInterface
+import java.lang.reflect.InvocationHandler
+import java.lang.reflect.Method
+import java.lang.reflect.Proxy
 import java.util.Arrays
 import java.util.Locale
 import java.util.concurrent.Executor
+import java.util.regex.Pattern
 import javax.security.auth.callback.Callback
 import org.objenesis.ObjenesisHelper
 import sh.anirudhgupta109.pxn.BuildConfig
@@ -864,6 +868,23 @@ class StatusbarMods @SuppressLint("DiscouragedApi") constructor(context: Context
 				mView.findViewById<View>(SystemUtils.idOf("date")).setOnLongClickListener(clickListener)
 			}
 
+		// The Compose shade header draws its date as plain text - add click when it is composed
+		resolveComposeClickApi()
+		try {
+			ReflectedClass.ofIfPossible("com.android.systemui.shade.ui.composable.VariableDayDateKt")
+				.takeIf { it.clazz != null }?.before(Pattern.compile("VariableDayDate.*"))
+				?.run { param ->
+					val modifierClass = composeModifierClass ?: return@run
+					val index = param.method.parameterTypes.indexOfFirst { it == modifierClass }
+					if (index == -1) return@run
+					val modifier = param.args.getOrNull(index) ?: return@run
+					val onClick = composeFunction0 { launchCalendar() } ?: return@run
+					composeClickableModifier(modifier, onClick)?.let { param.args[index] = it }
+				}
+		} catch (t: Throwable) {
+			log("StatusbarMods: could not hook the Compose shade date", t)
+		}
+
 		//modding clock, adding additional objects,
 		PhoneStatusBarViewControllerClass
 			.after("onViewAttached")
@@ -1404,6 +1425,103 @@ class StatusbarMods @SuppressLint("DiscouragedApi") constructor(context: Context
 			}
 			return false
 		}
+	}
+	//endregion
+
+	//region icon tap related (Compose shade header)
+	private var composeFunction0Class: Class<*>? = null
+	private var composeModifierClass: Class<*>? = null
+	private var composeClickableMethod: Method? = null
+	private var composeUnit: Any? = null
+	private var composeClickApiResolved = false
+
+	/** Functional interface Compose calls `Function0` have a zero-arg invoke. */
+	private fun isComposeFunction0(type: Class<*>): Boolean =
+		type.isInterface && type.declaredMethods.any { it.name == "invoke" && it.parameterCount == 0 }
+
+	/** Resolve Compose classes loaded by SystemUI */
+	private fun resolveComposeClickApi() {
+		if (composeClickApiResolved) return
+		composeClickApiResolved = true
+		try {
+			val clickable = ReflectedClass.ofIfPossible("androidx.compose.foundation.ClickableKt").clazz
+				?: return
+			composeClickableMethod = clickable.declaredMethods
+				.filter {
+					it.name.startsWith("clickable") &&
+						it.parameterTypes.isNotEmpty() &&
+						it.returnType == it.parameterTypes[0] &&
+						it.parameterTypes.lastOrNull() == Int::class.javaPrimitiveType &&
+						it.parameterTypes.count { type -> isComposeFunction0(type) } == 1
+				}
+				.minByOrNull { it.parameterCount }
+			val method = composeClickableMethod ?: return
+			composeModifierClass = method.parameterTypes.getOrNull(0)
+			composeFunction0Class = method.parameterTypes.firstOrNull { isComposeFunction0(it) }
+			val loader = composeFunction0Class?.classLoader ?: return
+			composeUnit = try {
+				Class.forName("kotlin.Unit", false, loader).getField("INSTANCE").get(null)
+			} catch (t: Throwable) {
+				null
+			}
+		} catch (t: Throwable) {
+			log("StatusbarMods: could not resolve the Compose click API", t)
+		}
+	}
+
+	/** `Function0<Unit>` for SystemUI's Compose classes. */
+	private fun composeFunction0(block: () -> Unit): Any? {
+		val function0 = composeFunction0Class ?: return null
+		return try {
+			Proxy.newProxyInstance(
+				function0.classLoader,
+				arrayOf(function0),
+				InvocationHandler { proxy, method, args ->
+					when (method.name) {
+						"invoke" -> {
+							block()
+							composeUnit
+						}
+						"equals" -> proxy === args?.getOrNull(0)
+						"hashCode" -> System.identityHashCode(proxy)
+						"toString" -> "PXNShadeDateClick"
+						else -> null
+					}
+				},
+			)
+		} catch (t: Throwable) {
+			log("StatusbarMods: could not build the Compose date click", t)
+			null
+		}
+	}
+
+	/** `original.then(Modifier.clickable(onClick))`, with the click built reflectively. */
+	private fun composeClickableModifier(original: Any, onClick: Any): Any? {
+		val method = composeClickableMethod ?: return null
+		val function0 = composeFunction0Class
+		val args = arrayOfNulls<Any?>(method.parameterCount)
+		method.parameterTypes.forEachIndexed { index, type ->
+			args[index] = when {
+				index == 0 -> original
+				type == Boolean::class.javaPrimitiveType -> true
+				type == Int::class.javaPrimitiveType -> 0
+				type == function0 -> onClick
+				else -> null
+			}
+		}
+		return try {
+			method.invoke(null, *args)
+		} catch (t: Throwable) {
+			log("StatusbarMods: could not attach the Compose date click", t)
+			null
+		}
+	}
+
+	private fun launchCalendar() {
+		val starter = mActivityStarter ?: return
+		val today = CalendarContract.CONTENT_URI.buildUpon().appendPath("time")
+		today.appendPath(System.currentTimeMillis().toString())
+		callMethod(starter, "postStartActivityDismissingKeyguard", Intent(Intent.ACTION_VIEW, today.build()), 0)
 	}
 	//endregion
 
