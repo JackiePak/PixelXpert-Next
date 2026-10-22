@@ -1,3 +1,8 @@
+**canary-536**  
+- data: Only restart unhooked processes instead of always SysUI  
+- Add a keyboard space toggle to gesture navigation  
+- Some misc. fixes for QS clock/date tap
+  
 **canary-535**  
 - Make the QS clock/date taps work on the Compose shade header  
 - screens: Hook the battery bar page to statusbar instead of leaving just the toggle  
