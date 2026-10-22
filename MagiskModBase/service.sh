@@ -63,9 +63,3 @@ if [ -f "$MODDIR/install_needed" ]; then
 	pm install -r -d "$MODDIR/PixelXpert-Next.apk" > /dev/null 2>&1
 	rm -f "$MODDIR/install_needed"
 fi
-
-# Give the system a brief moment to settle
-sleep 2
-
-# Restart SystemUI so the LSPosed hook can properly initiate with decrypted preferences
-killall com.android.systemui
