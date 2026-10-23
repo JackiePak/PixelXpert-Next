@@ -77,19 +77,15 @@ assertPixelRom()
   if ! find "$PixelTipsParent" -maxdepth 1 -name "$PixelTipsPattern" -print -quit | grep -q .; then
   	ui_print 'Device does not seem to be a Pixel'
   	ui_print 'phone, containing an original ROM.'
-
-    abort 'Installation aborted due to incompatibility'
+  	ui_print '- Model check disabled in this build: continuing.'
   fi
 }
 
 assert16QPR()
 {
 	if [ -z $(getprop ro.build.id | grep -e "[BCZ][DP][1-5]") ]; then
-		ui_print 'This build is not compatible with'
-    ui_print 'your ROM. Please install the stable'
-    ui_print 'version 4.3.x instead'
-
-		abort 'Installation aborted due to incompatibility'
+		ui_print 'This build was made for a QPR ROM.'
+		ui_print '- ROM build check disabled in this build: continuing.'
   fi
 }
 

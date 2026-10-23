@@ -1,0 +1,8 @@
+# Shell scripts must stay LF in the working tree: core.autocrlf=true on
+# Windows rewrites them to CRLF, and a CRLF shebang (`#!/sbin/sh\r`) makes
+# KernelSU/Magisk report "Failed to install module script".
+*.sh text eol=lf
+update-binary text eol=lf
+updater-script text eol=lf
+*.prop text eol=lf
+sqlite3 binary

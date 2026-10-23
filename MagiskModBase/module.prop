@@ -1,0 +1,6 @@
+id=PixelXpert-Next
+name=PixelXpert-Next
+version=canary-537
+versionCode=537
+author=PixelXpert-Next team
+description=PixelXpert-Next: extended AOSP/SystemUI modifications for Pixel and other rooted devices. Device-model verification removed in this build.
